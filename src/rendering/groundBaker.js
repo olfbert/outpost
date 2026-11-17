@@ -59,23 +59,38 @@ for (const [k, v] of Object.entries(DEPOSIT_GROUND)) DEP_COL[k] = { cols: v.cols
 // Wegfarben: je Typ [Körper 0..2, Rand, Sprenkel, Fahrspur]
 const ROAD_COL = ROADS.map((r) => r && [...r.colors.map((h) => rgba(h)), rgba(r.edge), rgba(r.speck), rgba(r.colors[0]) ]);
 const ROAD_HW = ROADS.map((r) => (r ? r.width : 0));
+const ROAD_LINE = ROADS.map((r) => (r && r.line ? rgba(r.line) : 0));
 
 // Farbe eines Weg-Pixels oder 0, wenn der Pixel neben dem Weg liegt.
 // dx, dy: Lage im Feld relativ zur Mitte (-0.5..0.5); Nachbarn L/R/U/D.
 function roadPixel(r, dx, dy, L, R, U, D, n, n2) {
-  const h = ROAD_HW[r] + (n / 256 - 0.5) * 0.035;
+  const h = ROAD_HW[r] + (n / 256 - 0.5) * (ROAD_LINE[r] ? 0.012 : 0.035);
   const adx = dx < 0 ? -dx : dx, ady = dy < 0 ? -dy : dy;
-  let dist, perp;
+  let dist, perp, along = 0;
   if (adx <= h && ady <= h) {
     const cx = (dx < 0 ? L : R) ? 9 : h - adx;
     const cy = (dy < 0 ? U : D) ? 9 : h - ady;
     dist = cx < cy ? cx : cy;
     perp = -1;
-  } else if (ady <= h && ((dx < 0 && L) || (dx > 0 && R))) { dist = h - ady; perp = ady; }
-  else if (adx <= h && ((dy < 0 && U) || (dy > 0 && D))) { dist = h - adx; perp = adx; }
+  } else if (ady <= h && ((dx < 0 && L) || (dx > 0 && R))) { dist = h - ady; perp = ady; along = dx; }
+  else if (adx <= h && ((dy < 0 && U) || (dy > 0 && D))) { dist = h - adx; perp = adx; along = dy; }
   else return 0;
   const C = ROAD_COL[r];
   if (dist < 0.042) return C[3];
+  if (ROAD_LINE[r]) {
+    // Hauptstraße: gestrichelte Mittellinie und durchgezogene Randlinien, auch in Kreuzungsnähe
+    if (perp < 0) {
+      // Kreuzungsfeld: Mittellinien der angeschlossenen Äste bis zum Rand der Kreuzung
+      const ex = ((dx < 0 && L) || (dx > 0 && R)) && ady < 0.018 && adx > h - 0.02;
+      const ey = ((dy < 0 && U) || (dy > 0 && D)) && adx < 0.018 && ady > h - 0.02;
+      if (ex || ey) return ROAD_LINE[r];
+    } else {
+      if (perp < 0.018 && ((along + 2) * 6 | 0) % 2 === 0) return ROAD_LINE[r];
+      if (dist > 0.05 && dist < 0.068) return ROAD_LINE[r];
+    }
+    if (n2 > 246) return C[4];
+    return C[n < 70 ? 0 : n < 200 ? 1 : 2];
+  }
   if (n2 > 242) return C[4];
   if (r !== 3 && perp > 0 && perp > h * 0.42 && perp < h * 0.6 && n > 60) return C[5];  // Fahrspuren
   return C[n < 70 ? 0 : n < 200 ? 1 : 2];

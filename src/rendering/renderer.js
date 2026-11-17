@@ -550,6 +550,21 @@ export class Renderer {
       ctx.strokeStyle = '#f2dc9a';
       this._diamondPath(q.x, q.y, q.w, q.h); ctx.stroke();
     }
+    // Holzfäller-Gebiete: Fällen (orange), Pflanzen (grün); gestrichelt = Vorschau
+    if (ov.areas && lvl <= 1) {
+      for (const a of ov.areas) {
+        const w = a.x1 - a.x0 + 1, h = a.y1 - a.y0 + 1;
+        const col = a.kind === 'plant' ? [120, 210, 110] : a.kind === 'radius' ? [240, 214, 140] : [235, 150, 70];
+        ctx.fillStyle = `rgba(${col}, ${a.preview ? 0.22 : 0.14})`;
+        this._diamondPath(a.x0, a.y0, w, h); ctx.fill();
+        ctx.setLineDash(a.preview || a.kind === 'radius' ? [8 * px, 6 * px] : []);
+        ctx.lineWidth = 2 * px;
+        ctx.strokeStyle = `rgba(${col}, 0.95)`;
+        this._diamondPath(a.x0, a.y0, w, h); ctx.stroke();
+        ctx.setLineDash([]);
+        if (a.label) this._label(a.label, ((a.x0 + a.x1 + 1) / 2 - a.y0) * 32, ((a.x0 + a.x1 + 1) / 2 + a.y0) * 16 - 10 * px, cam, false);
+      }
+    }
     if (ov.road) {
       const g = ov.road;
       for (const t of g.tiles) {

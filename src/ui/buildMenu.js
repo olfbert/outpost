@@ -23,6 +23,7 @@ function roadThumb(def, size) {
   const s = hw;                                          // Kantenlänge im Raster
   g.fillStyle = def.edge; g.fillRect(0, s * (0.5 - w / 2) - 1, s, s * w + 2); g.fillRect(s * (0.5 - w / 2) - 1, 0, s * w + 2, s);
   g.fillStyle = def.colors[1]; g.fillRect(0, s * (0.5 - w / 2) + 1, s, s * w - 2); g.fillRect(s * (0.5 - w / 2) + 1, 0, s * w - 2, s);
+  if (def.line) { g.fillStyle = def.line; for (let k = 0; k < s; k += 6) { g.fillRect(k, s * 0.5 - 0.6, 3, 1.2); g.fillRect(s * 0.5 - 0.6, k, 1.2, 3); } }
   g.restore();
   return c;
 }

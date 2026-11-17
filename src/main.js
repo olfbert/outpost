@@ -53,6 +53,7 @@ let lastHud = 0;
 let dirty = true;
 let placing = null;          // Gebäudetyp im Platzierungsmodus
 let ghostPos = null;         // obere Ecke der Vorschau
+let areaTool = null;         // Holzfäller-Gebiet festlegen { id, kind: 'fell'|'plant', start, end }
 let roadTool = null;         // Weg-Werkzeug { type, start, end, plan }
 let lastPointer = 'mouse';
 let prevView = null;         // Ansicht vor dem Sprung in die Weltübersicht
@@ -286,6 +287,7 @@ function updateGhost() {
 
 // key: 'b:<gebäude>', 'r:<wegtyp>' oder null
 function setTool(key) {
+  if (areaTool) { areaTool = null; hud.setHint(''); dirty = true; }
   const [kind, type] = key ? key.split(':') : [null, null];
   placing = kind === 'b' ? type : null;
   roadTool = kind === 'r' ? { type: +type, start: null, end: null, plan: null } : null;
@@ -374,6 +376,76 @@ function buildRoad() {
   saveNow();
 }
 
+// --- Holzfäller-Gebiete ---------------------------------------------------------------
+const AREA_RANGE = 14, AREA_MAX = 16;   // höchstens 14 Felder vom Lager entfernt, höchstens 16 × 16 Felder
+
+function rectOf(a, b) {
+  return { x0: Math.min(a.x, b.x), y0: Math.min(a.y, b.y), x1: Math.max(a.x, b.x), y1: Math.max(a.y, b.y) };
+}
+
+// Rechteck auf Reichweite und Größe begrenzen
+function clampArea(b, r) {
+  const q = { ...r };
+  q.x0 = Math.max(q.x0, b.x - AREA_RANGE); q.y0 = Math.max(q.y0, b.y - AREA_RANGE);
+  q.x1 = Math.min(q.x1, b.x + AREA_RANGE); q.y1 = Math.min(q.y1, b.y + AREA_RANGE);
+  if (q.x1 - q.x0 + 1 > AREA_MAX) { if (r.x0 < b.x - AREA_RANGE || areaTool?.start?.x === r.x0) q.x1 = q.x0 + AREA_MAX - 1; else q.x0 = q.x1 - AREA_MAX + 1; }
+  if (q.y1 - q.y0 + 1 > AREA_MAX) { if (areaTool?.start?.y === r.y0) q.y1 = q.y0 + AREA_MAX - 1; else q.y0 = q.y1 - AREA_MAX + 1; }
+  q.x0 = Math.max(0, q.x0); q.y0 = Math.max(0, q.y0);
+  q.x1 = Math.min(world.size - 1, q.x1); q.y1 = Math.min(world.size - 1, q.y1);
+  return q.x1 >= q.x0 && q.y1 >= q.y0 ? q : null;
+}
+
+function startAreaTool(id, kind) {
+  const b = state.buildings.find((q) => q.id === id);
+  if (!b) return;
+  setTool(null);
+  areaTool = { id, kind, start: null, end: null };
+  infoPanel.hide();
+  hud.setHint(`${kind === 'plant' ? 'Pflanzgebiet' : 'Fällgebiet'}: erste Ecke antippen, dann die gegenüberliegende Ecke · höchstens ${AREA_MAX} × ${AREA_MAX} Felder, bis ${AREA_RANGE} Felder vom Lager`);
+  dirty = true;
+}
+
+function areaPoint(x, y) {
+  const t = areaTool;
+  const b = state.buildings.find((q) => q.id === t.id);
+  if (!b) { areaTool = null; return; }
+  if (!t.start) { t.start = { x, y }; t.end = { x, y }; dirty = true; return; }
+  const r = clampArea(b, rectOf(t.start, { x, y }));
+  areaTool = null;
+  hud.setHint('');
+  if (!r) { hud.toast('Das Gebiet liegt außer Reichweite des Lagers'); dirty = true; return; }
+  const def = BUILDINGS[b.type];
+  if (t.kind === 'plant') { b.plantArea = r; b.plantAcc = 0; }
+  else b.fellArea = r;
+  const list = production.treesFor(b, def);
+  b.treesLeft = list.length;
+  b.target = list.length ? { x: list[0].x, y: list[0].y } : null;
+  if (t.kind === 'plant') b.plantFree = production.plantSpots(b).length;
+  state.rev++;
+  const n = (r.x1 - r.x0 + 1) * (r.y1 - r.y0 + 1);
+  hud.toast(t.kind === 'plant' ? `Pflanzgebiet festgelegt · ${n} Felder, ${b.plantFree} frei zum Pflanzen` : `Fällgebiet festgelegt · ${b.treesLeft} Bäume`);
+  selectAt(b.x, b.y);
+  saveNow();
+}
+
+// Gebiete des gewählten Holzfällers (und Vorschau beim Festlegen) für das Overlay
+function areaOverlay() {
+  const id = areaTool ? areaTool.id : (overlay.selected && !infoPanel.el.hidden ? overlay.selectedId : null);
+  if (!id) return null;
+  const b = state.buildings.find((q) => q.id === id);
+  if (!b || !BUILDINGS[b.type]?.requirements?.nearTrees) return null;
+  const out = [];
+  const r = BUILDINGS[b.type].requirements.nearTrees.radius;
+  if (b.fellArea) out.push({ ...b.fellArea, kind: 'fell', label: 'Fällgebiet' });
+  else out.push({ x0: b.x - r, y0: b.y - r, x1: b.x + r, y1: b.y + r, kind: 'radius', label: 'Fällt im Umkreis' });
+  if (b.plantArea) out.push({ ...b.plantArea, kind: 'plant', label: 'Pflanzgebiet' });
+  if (areaTool && areaTool.start) {
+    const q = clampArea(b, rectOf(areaTool.start, areaTool.end || areaTool.start));
+    if (q) out.push({ ...q, kind: areaTool.kind, preview: true });
+  }
+  return out;
+}
+
 // --- Auswahl ------------------------------------------------------------------------
 function selectAt(x, y) {
   if (!world.inBounds(x, y)) { overlay.selected = null; infoPanel.hide(); dirty = true; return; }
@@ -395,6 +467,7 @@ function selectAt(x, y) {
     overlay.selected = { x, y, w: 1, h: 1 };
     infoPanel.showRoad(x, y, r, roads.shapeName(x, y));
   } else {
+    overlay.selectedId = null;
     overlay.selected = { x, y, w: 1, h: 1 };
     infoPanel.showTile(x, y, store.tile(x, y), world, CONFIG);
   }
@@ -472,6 +545,18 @@ const infoPanel = new InfoPanel({
     updatePopulation(state, 0, {});
     state.rev++;
     selectAt(b.x, b.y);
+    saveNow();
+  },
+  areaTool(id, kind) { startAreaTool(id, kind); },
+  clearAreas(id) {
+    const b = state.buildings.find((q) => q.id === id);
+    if (!b) return;
+    delete b.fellArea; delete b.plantArea; b.plantAcc = 0;
+    const list = production.treesFor(b, BUILDINGS[b.type]);
+    b.treesLeft = list.length; b.target = list.length ? { x: list[0].x, y: list[0].y } : null;
+    state.rev++;
+    selectAt(b.x, b.y);
+    hud.toast('Gebiete zurückgesetzt · fällt wieder im Umkreis, pflanzt nicht');
     saveNow();
   },
   togglePriority(id) {
@@ -694,6 +779,7 @@ const input = new Input(canvas, camera, {
     lastPointer = type;
     const t = camera.screenToTile(sx, sy, tmp);
     const x = Math.floor(t.x), y = Math.floor(t.y);
+    if (areaTool) { areaPoint(x, y); return; }
     if (roadTool) { roadPoint(x, y, type === 'mouse'); return; }
     if (placing) {
       setGhost(x, y);
@@ -708,6 +794,10 @@ const input = new Input(canvas, camera, {
     if (sx < 0) { if (overlay.hover) { overlay.hover = null; dirty = true; } return; }
     const t = camera.screenToTile(sx, sy, tmp);
     const x = Math.floor(t.x), y = Math.floor(t.y);
+    if (areaTool) {
+      if (areaTool.start && (areaTool.end.x !== x || areaTool.end.y !== y)) { areaTool.end = { x, y }; dirty = true; }
+      return;
+    }
     if (roadTool) {
       if (roadTool.start && (!roadTool.end || roadTool.end.x !== x || roadTool.end.y !== y)) { roadTool.end = { x, y }; updateRoadPlan(); }
       if (!overlay.hover || overlay.hover.x !== x || overlay.hover.y !== y) { overlay.hover = { x, y }; dirty = true; }
@@ -718,6 +808,7 @@ const input = new Input(canvas, camera, {
   },
   change() { dirty = true; scheduleSave(4000); },
   cancel() {
+    if (areaTool) { const id = areaTool.id; areaTool = null; hud.setHint(''); const b = state.buildings.find((q) => q.id === id); if (b) selectAt(b.x, b.y); dirty = true; return; }
     if (roadTool && roadTool.start && lastPointer === 'mouse') { roadTool.start = null; roadTool.end = null; updateRoadPlan(); }
     else if (placing || roadTool) setTool(null);
     else if (overlay.selected) { overlay.selected = null; infoPanel.hide(); dirty = true; }
@@ -796,6 +887,7 @@ function frame(now) {
     }
   } else if (state.rev !== life.rev) life.rebuild();
   if (dirty) {
+    overlay.areas = areaOverlay();
     dirty = renderer.draw(camera, overlay, camera.scale >= CONFIG.lodDetail ? life : null);
     hud.setZoom(camera.scale);
     const tilt = state.settings.tilt === false ? 0 : Math.max(0, Math.min(1, (0.22 - camera.scale) / 0.16));
@@ -842,7 +934,7 @@ async function boot() {
   setTimeout(() => $('loading').remove(), 500);
   requestAnimationFrame(frame);
   // Für Tests und Fehlersuche
-  window.__outpost = { camera, renderer, sprites, get world() { return world; }, get state() { return state; }, get store() { return store; }, get placement() { return placement; }, get roads() { return roads; }, setTool, setPlacing, tryPlace, buildRoad, roadPoint, get roadTool() { return roadTool; }, get production() { return production; }, get life() { return life; }, economy, setSpeed: (v) => { speed = v; }, setGhost, selectAt, isDirty: () => dirty,
+  window.__outpost = { camera, renderer, sprites, get world() { return world; }, get state() { return state; }, get store() { return store; }, get placement() { return placement; }, get roads() { return roads; }, setTool, setPlacing, tryPlace, buildRoad, roadPoint, get roadTool() { return roadTool; }, get areaTool() { return areaTool; }, areaPoint, startAreaTool, get production() { return production; }, get life() { return life; }, economy, setSpeed: (v) => { speed = v; }, setGhost, selectAt, isDirty: () => dirty,
     give(goods) { addGoods(state, goods); },
     simulate(months) { const r = production.advance(months); afterSim(r, true); refreshState(); return r; } };
 }

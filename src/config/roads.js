@@ -23,7 +23,12 @@ export const ROADS = [
     width: 0.26, cost: { money: 60 }, terrain: GROUND,
     colors: ['#545656', '#5c5e5e', '#636565'], edge: '#8d8a7c', speck: '#6e7070',
   },
+  {
+    id: 'avenue', name: 'Hauptstraße', description: 'Breite Asphaltstraße mit zwei Fahrspuren und Mittellinie. Lkw fahren schnell und begegnen sich ohne Bremsen.',
+    width: 0.44, cost: { money: 140 }, terrain: GROUND, lanes: 2,
+    colors: ['#46494a', '#4d5051', '#545758'], edge: '#8d8a7c', speck: '#5d6061', line: '#d9d3b8',
+  },
 ];
 
-export const ROAD_MENU = [1, 2, 3];
+export const ROAD_MENU = [1, 2, 3, 4];
 export const ROAD_BY_ID = Object.fromEntries(ROADS.filter(Boolean).map((r, i) => [r.id, i + 1]));

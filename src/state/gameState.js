@@ -30,6 +30,7 @@ export function newState(seed, cfg) {
     buildings: [],           // { id, type, x, y, settlementId, builtAt }
     nextId: 1,
     cleared: new Set(),      // dauerhaft geräumte Felder (Bau, Weg) – Schlüssel y * Weltgröße + x
+    planted: new Map(),      // gepflanzte Bäume: Feld -> Spielmonat des Pflanzens
     felled: new Map(),       // gefällte Bäume: Feld -> Spielmonat des Fällens (wachsen nach)
     camera: null,
     settings: { minimap: true, debug: false, tilt: true, clouds: true, cheats: { on: false } },
@@ -63,6 +64,7 @@ export function serialize(state) {
     nextId: state.nextId,
     cleared: [...state.cleared],
     felled: [...state.felled],
+    planted: [...(state.planted || [])],
     camera: state.camera,
     settings: state.settings,
   };
@@ -98,6 +100,7 @@ export function deserialize(data, cfg) {
   s.neighbors = Array.isArray(data.neighbors) ? data.neighbors.filter((n) => n && n.id && n.stock) : [];
   if (Array.isArray(data.ledger)) s.ledger = data.ledger.slice(-24);
   s.cleared = new Set(Array.isArray(data.cleared) ? data.cleared : []);
+  s.planted = new Map(Array.isArray(data.planted) ? data.planted.filter((e) => Array.isArray(e) && Number.isInteger(e[0]) && Number.isFinite(e[1])) : []);
   s.felled = new Map(Array.isArray(data.felled) ? data.felled.filter((e) => Array.isArray(e) && Number.isFinite(e[1])) : []);
   s.camera = data.camera || null;
   recomputeStock(s);

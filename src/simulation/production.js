@@ -4,7 +4,7 @@
 
 import { BUILDINGS } from '../config/buildings.js';
 import { GOOD_IDS } from '../config/economy.js';
-import { isTree, isDeposit, isWater } from '../config/terrain.js';
+import { isTree, isDeposit, isWater, T } from '../config/terrain.js';
 import { advanceSites } from './construction.js';
 import { updatePopulation, workFactor } from './population.js';
 import { recomputeStock, takeGoods, outCap } from './inventory.js';
@@ -12,6 +12,9 @@ import { Logistics, truckUpkeep } from './logistics.js';
 import { claimFields, rebuildFieldTiles, monthIndex, fieldPhase, isWinter, yearlyYield, GROW_MONTHS, HARVEST_MONTHS } from './farming.js';
 
 const STEP = 0.02;          // größter Simulationsschritt in Monaten (ca. 29 echte Minuten)
+
+// Boden, auf dem Holzfäller Bäume pflanzen
+const PLANT_GROUND = [T.GRASS, T.MEADOW, T.FOREST, T.CONIFER];
 
 // Reihenfolge: erst Rohstoffe, dann Weiterverarbeitung (Tiefe der Kette)
 function tier(def) {
@@ -79,6 +82,35 @@ export class Production {
     return out.sort((a, b) => a.d - b.d);
   }
 
+  // Bäume, die ein Holzfäller fällen darf: festgelegtes Fällgebiet oder Umkreis
+  treesFor(b, def) {
+    const a = b.fellArea;
+    if (!a) return this.treesAround(b.x, b.y, def.requirements.nearTrees.radius);
+    const out = [];
+    for (let y = a.y0; y <= a.y1; y++) for (let x = a.x0; x <= a.x1; x++) {
+      if (!this.world.inBounds(x, y)) continue;
+      if (isTree(this.store.tile(x, y).obj)) out.push({ x, y, d: (x - b.x) ** 2 + (y - b.y) ** 2 });
+    }
+    return out.sort((p, q) => p.d - q.d);
+  }
+
+  // Freie Pflanzplätze im Pflanzgebiet
+  plantSpots(b) {
+    const a = b.plantArea, st = this.state, W = this.world.size, out = [];
+    if (!a) return out;
+    for (let y = a.y0; y <= a.y1; y++) for (let x = a.x0; x <= a.x1; x++) {
+      if (!this.world.inBounds(x, y)) continue;
+      const k = y * W + x;
+      if (st.cleared.has(k) || st.roads.has(k) || st.planted.has(k) || st.felled.has(k)) continue;
+      if (st.fieldTiles && st.fieldTiles.has(k)) continue;
+      if (this.placement && this.placement.buildingAt(x, y)) continue;
+      const t = this.store.tile(x, y);
+      if (t.obj || !PLANT_GROUND.includes(t.terrain)) continue;
+      out.push({ x, y, k });
+    }
+    return out;
+  }
+
   // Beim Bauen: Daten für Abbau/Holzernte festhalten
   initBuilding(b) {
     const def = BUILDINGS[b.type];
@@ -92,7 +124,7 @@ export class Production {
     }
     if (def.requirements.nearTrees) {
       b.fell = 0;
-      const list = this.treesAround(b.x, b.y, def.requirements.nearTrees.radius);
+      const list = this.treesFor(b, def);
       b.treesLeft = list.length;
       b.target = list.length ? { x: list[0].x, y: list[0].y } : null;   // der nächste Baum (sichtbar bearbeitet)
     }
@@ -111,7 +143,7 @@ export class Production {
 
   // Einen Baum nahe dem Lager fällen. Liefert das Feld oder null.
   _fellTree(b, def) {
-    const list = this.treesAround(b.x, b.y, def.requirements.nearTrees.radius);
+    const list = this.treesFor(b, def);
     if (!list.length) { b.treesLeft = 0; b.target = null; return null; }
     // bevorzugt den Baum, an dem die Arbeiter schon stehen
     let t = list[0];
@@ -124,6 +156,27 @@ export class Production {
     return t;
   }
 
+  // Holzfäller pflanzt im Pflanzgebiet junge Bäume (unabhängig vom Fällen)
+  _plant(b, def, months, res) {
+    b.plantAcc = (b.plantAcc || 0) + months * (def.plantPerMonth || 8);
+    if (b.plantAcc < 1) return;
+    const spots = this.plantSpots(b);
+    b.plantFree = spots.length;
+    if (!spots.length) { b.plantAcc = Math.min(b.plantAcc, 1); return; }
+    // zuerst die Plätze nah am Lager
+    spots.sort((p, q) => ((p.x - b.x) ** 2 + (p.y - b.y) ** 2) - ((q.x - b.x) ** 2 + (q.y - b.y) ** 2));
+    let i = 0;
+    while (b.plantAcc >= 1 && i < spots.length) {
+      const t = spots[i++];
+      this.state.planted.set(t.k, this.state.gameMonths);
+      this.store.invalidateTile(t.x, t.y);
+      res.felled.push({ x: t.x, y: t.y });
+      b.plantAcc -= 1;
+      b.planted = (b.planted || 0) + 1;
+    }
+    b.plantFree = spots.length - i;
+  }
+
   // Nachwachsen: Stumpf -> junger Baum -> Baum. Liefert geänderte Felder.
   _regrow(res) {
     const st = this.state, W = this.world.size, now = st.gameMonths;
@@ -133,11 +186,19 @@ export class Production {
       if (age >= this.cfg.regrowTreeMonths) { st.felled.delete(k); this.store.invalidateTile(x, y); res.felled.push({ x, y }); }
       else if (age >= this.cfg.regrowSaplingMonths && age < this.cfg.regrowSaplingMonths + 1) { this.store.invalidateTile(x, y); res.felled.push({ x, y }); }
     }
+    // Gepflanzte Bäume wachsen aus
+    for (const [k, at] of st.planted) {
+      const age = now - at;
+      if (age >= this.cfg.regrowTreeMonths && age < this.cfg.regrowTreeMonths + 1) {
+        const x = k % W, y = (k - x) / W;
+        this.store.invalidateTile(x, y); res.felled.push({ x, y });
+      }
+    }
     // Holzfäller, denen der Wald ausgegangen war, finden nachgewachsene Bäume
     for (const b of st.buildings) {
       const def = BUILDINGS[b.type];
       if (!def.requirements?.nearTrees) continue;
-      const list = this.treesAround(b.x, b.y, def.requirements.nearTrees.radius);
+      const list = this.treesFor(b, def);
       b.treesLeft = list.length;
       if (!b.target && list.length) b.target = { x: list[0].x, y: list[0].y };
     }
@@ -214,6 +275,7 @@ export class Production {
       const can = Math.max(0, b.reserve - b.extracted) / (out * step);
       if (can < f) { f = can; reason = 'exhausted'; }
     }
+    if (def.requirements.nearTrees && b.plantArea) this._plant(b, def, step * workF, res);
     if (def.requirements.nearTrees && b.treesLeft <= 0) { f = 0; reason = 'notrees'; }
     if (f <= 1e-6) { b.status = reason || 'idle'; return; }
     for (const [g, v] of Object.entries(p.inputs)) { inB[g] = Math.max(0, (inB[g] || 0) - v * step * f); b.stats.in += v * step * f; }

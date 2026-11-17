@@ -460,7 +460,8 @@ export class Life {
       const a = tiles[Math.max(0, i - 1)], b = tiles[Math.min(tiles.length - 1, i + 1)];
       let dx = b.x - a.x, dy = b.y - a.y;
       const n = Math.hypot(dx, dy) || 1; dx /= n; dy /= n;
-      pts.push({ x: tiles[i].x + 0.5 - dy * 0.15, y: tiles[i].y + 0.5 + dx * 0.15 });
+      const lane = this.state.roads.get(this.key(tiles[i].x, tiles[i].y)) === 4 ? 0.22 : 0.15;   // Hauptstraße: eigene Fahrspur
+      pts.push({ x: tiles[i].x + 0.5 - dy * lane, y: tiles[i].y + 0.5 + dx * lane });
     }
     return pts;
   }
@@ -603,7 +604,7 @@ export class Life {
 
   _truckSpeed(v) {
     const t = this.state.roads.get(this.key(Math.floor(v.x), Math.floor(v.y))) || 1;
-    return [0, 0.8, 1.1, 1.5][t] || 0.8;     // Felder je Sekunde (Darstellung)
+    return [0, 0.8, 1.1, 1.5, 1.9][t] || 0.8;     // Felder je Sekunde (Darstellung)
   }
 
   update(dt, view) {

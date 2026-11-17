@@ -2,12 +2,12 @@
 // kürzeste Wege (Dijkstra über Wegfelder). Ergebnisse werden zwischengespeichert,
 // bis sich das Wegenetz ändert (state.roadRev).
 //
-// Kosten in „Erdweg-Feldern“: Erdweg 1, Schotter 0,7, Straße 0,45.
+// Kosten in „Erdweg-Feldern“: Erdweg 1, Schotter 0,7, Straße 0,45, Hauptstraße 0,3.
 // Ohne Weganschluss wird querfeldein gerechnet – dreimal so teuer wie ein Erdweg.
 
 import { BUILDINGS } from '../config/buildings.js';
 
-export const ROAD_COST = [0, 1, 0.7, 0.45];
+export const ROAD_COST = [0, 1, 0.7, 0.45, 0.3];
 const OFFROAD = 3;
 
 export class Network {

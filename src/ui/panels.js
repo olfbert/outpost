@@ -140,7 +140,12 @@ export class InfoPanel {
     if (def.farm && def.farm.kind === 'pasture') rows.push(['Weide', `${b.fields?.length || 0} von ${def.farm.max} Feldern`]);
     if (b.stats?.last) rows.push(['Vormonat', fmt(b.stats.last.out) + ' hergestellt']);
     if (b.reserve !== undefined) rows.push(['Restvorrat', `${fmt(Math.max(0, b.reserve - b.extracted))} von ${fmt(b.reserve)}`]);
-    if (b.treesLeft !== undefined) rows.push(['Bäume in Reichweite', fmt(b.treesLeft)]);
+    if (b.treesLeft !== undefined) {
+      rows.push([b.fellArea ? 'Bäume im Fällgebiet' : 'Bäume in Reichweite', fmt(b.treesLeft)]);
+      const sz = (a) => `${a.x1 - a.x0 + 1} × ${a.y1 - a.y0 + 1} Felder`;
+      rows.push(['Fällgebiet', b.fellArea ? sz(b.fellArea) : `Umkreis ${def.requirements.nearTrees.radius} Felder`]);
+      rows.push(['Pflanzgebiet', b.plantArea ? `${sz(b.plantArea)} · ${fmt(b.plantFree ?? 0)} Plätze frei · ${fmt(b.planted || 0)} gepflanzt` : 'keins – es wird nicht gepflanzt']);
+    }
     rows.push(['Betriebskosten', `${fmt(def.upkeep || 0)} Cr / Monat`]);
     return `<p><span class="status-dot ${s.cls}"></span>${esc(s.text)}</p><dl>${rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl>`;
   }
@@ -152,6 +157,11 @@ export class InfoPanel {
     this._wasSite = !!b.site;
     const actions = [];
     if (!b.site && def.farm && def.farm.kind === 'field') actions.push(`<button class="btn" id="info-crop">Sorte wechseln zu ${b.crop === 'grain' ? 'Kartoffeln' : 'Getreide'}</button>`);
+    if (!b.site && def.requirements?.nearTrees) {
+      actions.push(`<button class="btn" id="info-fell">Fällgebiet festlegen</button>`);
+      actions.push(`<button class="btn" id="info-plant">Pflanzgebiet festlegen</button>`);
+      if (b.fellArea || b.plantArea) actions.push(`<button class="btn" id="info-areas-reset">Gebiete zurücksetzen</button>`);
+    }
     if (!b.site && def.workers) actions.push(`<button class="btn" id="info-prio">${b.priority ? 'Vorrang aufheben' : 'Vorrang bei Arbeitern'}</button>`);
     if (!b.site && b.type === 'haulage' && (b.trucks || 0) < TRUCK.perDepot - 2) actions.push(`<button class="btn" id="info-truck">Lkw kaufen (${fmt(TRUCK.price)} Cr, ${TRUCK.upkeep} Cr / Monat)</button>`);
     this.body.innerHTML = `<h3>${esc(def.name)}${b.site ? ' <small>(Baustelle)</small>' : ''}</h3><p>${esc(def.description)}</p>
@@ -166,6 +176,9 @@ export class InfoPanel {
       ${b.type === 'landing_module' ? '<button class="btn" id="info-rename">Siedlung umbenennen</button>' : ''}
       <button class="btn danger" id="info-demolish">${b.site ? 'Baustelle abbrechen' : 'Abreißen'} (Erstattung ${esc(costText(refund))})</button>`;
     if ($('info-crop')) $('info-crop').addEventListener('click', () => this.api.setCrop(b.id, b.crop === 'grain' ? 'potatoes' : 'grain'));
+    if ($('info-fell')) $('info-fell').addEventListener('click', () => this.api.areaTool(b.id, 'fell'));
+    if ($('info-plant')) $('info-plant').addEventListener('click', () => this.api.areaTool(b.id, 'plant'));
+    if ($('info-areas-reset')) $('info-areas-reset').addEventListener('click', () => this.api.clearAreas(b.id));
     if ($('info-prio')) $('info-prio').addEventListener('click', () => this.api.togglePriority(b.id));
     if ($('info-truck')) $('info-truck').addEventListener('click', () => this.api.buyTruck(b.id));
     if ($('info-rename')) $('info-rename').addEventListener('click', () => this.api.rename());

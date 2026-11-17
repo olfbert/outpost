@@ -57,7 +57,7 @@ export class ChunkStore {
       }
     }
     const o = this._o;
-    const cleared = this.state.cleared, felled = this.state.felled;
+    const cleared = this.state.cleared, felled = this.state.felled, planted = this.state.planted;
     let dep = null;
     let objCount = 0;
     for (let ty = -2; ty < N + 2; ty++) {
@@ -74,6 +74,13 @@ export class ChunkStore {
           const k = y * W + x;
           if (!cleared.has(k)) {
             let ob = world.objectAt(x, y, o.terrain, o.forest);
+            if (ob === O.NONE && planted && planted.size) {   // gepflanzt: erst junger Baum, dann Baum
+              const pAt = planted.get(k);
+              if (pAt !== undefined) {
+                const con = o.terrain === T.CONIFER || ((x * 7 + y * 13) % 3 === 0);
+                ob = this.state.gameMonths - pAt >= this.cfg.regrowTreeMonths ? (con ? O.CONIFER : O.TREE) : (con ? O.SAPLING_C : O.SAPLING);
+              }
+            }
             const fAt = felled.get(k);
             if (fAt !== undefined) {   // gefällt: Stumpf, dann junger Baum
               const age = this.state.gameMonths - fAt;
