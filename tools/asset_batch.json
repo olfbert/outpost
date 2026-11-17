@@ -1,0 +1,99 @@
+{
+  "_hinweis": "Zuordnung Higgsfield-Bild -> Sprite. Verarbeitung: python3 -I tools/asset_batch.py tools/asset_batch.json",
+  "items": [
+    {
+      "job": "d9a34d50",
+      "sprite": "quarry",
+      "out": "assets/buildings/industrial/quarry_01.png",
+      "width": 126,
+      "footprint": "2x2",
+      "hue": "285,350",
+      "tone": "0.9,0.95",
+      "shadow": 0.3
+    },
+    {
+      "job": "163a9119",
+      "sprite": "iron_mine",
+      "out": "assets/buildings/industrial/mine_iron_01.png",
+      "width": 126,
+      "footprint": "2x2",
+      "hue": "285,345",
+      "tone": "0.9,0.95",
+      "shadow": 0.3,
+      "erode": 2
+    },
+    {
+      "job": "7cc662a7",
+      "sprite": "coal_mine",
+      "out": "assets/buildings/industrial/mine_coal_01.png",
+      "width": 126,
+      "footprint": "2x2",
+      "hue": "285,350",
+      "tone": "0.9,0.95",
+      "shadow": 0.3
+    },
+    {
+      "job": "6b76390b",
+      "sprite": "lime_quarry",
+      "out": "assets/buildings/industrial/quarry_lime_01.png",
+      "width": 126,
+      "footprint": "2x2",
+      "hue": "285,350",
+      "tone": "0.9,0.95",
+      "shadow": 0.3
+    },
+    {
+      "job": "40511807",
+      "sprite": "clay_pit",
+      "out": "assets/buildings/industrial/pit_clay_01.png",
+      "width": 126,
+      "footprint": "2x2",
+      "hue": "285,345",
+      "tone": "0.9,0.95",
+      "shadow": 0.3
+    },
+    {
+      "job": "b99eeec2",
+      "sprite": "sand_pit",
+      "out": "assets/buildings/industrial/pit_sand_01.png",
+      "width": 126,
+      "footprint": "2x2",
+      "hue": "285,350",
+      "tone": "0.9,0.95",
+      "shadow": 0.3
+    },
+    {
+      "job": "9ae59e58",
+      "sprite": "smelter",
+      "out": "assets/buildings/industrial/factory_smelter_01.png",
+      "width": 126,
+      "footprint": "2x2",
+      "hue": "310,336",
+      "tone": "0.9,0.95",
+      "shadow": 0.3,
+      "erode": 2
+    },
+    {
+      "job": "87895d91",
+      "sprite": "cement_works",
+      "out": "assets/buildings/industrial/factory_cement_01.png",
+      "width": 126,
+      "footprint": "2x2",
+      "hue": "285,365",
+      "tone": "0.9,0.95",
+      "shadow": 0.3,
+      "erode": 2
+    },
+    {
+      "job": "dee830b1",
+      "sprite": "concrete_plant",
+      "out": "assets/buildings/industrial/factory_concrete_01.png",
+      "width": 126,
+      "footprint": "2x2",
+      "hue": "285,345",
+      "tone": "0.9,0.95",
+      "shadow": 0.3,
+      "erode": 2
+    }
+  ]
+}

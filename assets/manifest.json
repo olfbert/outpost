@@ -1,0 +1,169 @@
+{
+  "sprites": {
+    "landing_module": {
+      "file": "buildings/landing/landing_module_01.png",
+      "ax": 66,
+      "ay": 70
+    },
+    "house_small": {
+      "file": "buildings/residential/house_small_01.png",
+      "ax": 31,
+      "ay": 21
+    },
+    "sawmill": {
+      "file": "buildings/industrial/factory_sawmill_01.png",
+      "ax": 60,
+      "ay": 33
+    },
+    "tree_conifer_01": {
+      "file": "nature/tree_conifer_01.png",
+      "ax": 17,
+      "ay": 55
+    },
+    "tree_conifer_02": {
+      "file": "nature/tree_conifer_02.png",
+      "ax": 13,
+      "ay": 47
+    },
+    "tree_conifer_03": {
+      "file": "nature/tree_conifer_03.png",
+      "ax": 17,
+      "ay": 62
+    },
+    "tree_conifer_group_01": {
+      "file": "nature/tree_conifer_group_01.png",
+      "ax": 25,
+      "ay": 74
+    },
+    "tree_conifer_group_02": {
+      "file": "nature/tree_conifer_group_02.png",
+      "ax": 26,
+      "ay": 85
+    },
+    "shelter": {
+      "file": "buildings/residential/shelter_01.png",
+      "ax": 30,
+      "ay": 13
+    },
+    "warehouse": {
+      "file": "buildings/industrial/warehouse_01.png",
+      "ax": 62,
+      "ay": 13
+    },
+    "lumber_camp": {
+      "file": "buildings/industrial/lumber_camp_01.png",
+      "ax": 26,
+      "ay": 17
+    },
+    "quarry": {
+      "file": "buildings/industrial/quarry_01.png",
+      "ax": 64,
+      "ay": 37
+    },
+    "iron_mine": {
+      "file": "buildings/industrial/mine_iron_01.png",
+      "ax": 67,
+      "ay": 26
+    },
+    "coal_mine": {
+      "file": "buildings/industrial/mine_coal_01.png",
+      "ax": 65,
+      "ay": 7
+    },
+    "lime_quarry": {
+      "file": "buildings/industrial/quarry_lime_01.png",
+      "ax": 62,
+      "ay": 31
+    },
+    "clay_pit": {
+      "file": "buildings/industrial/pit_clay_01.png",
+      "ax": 64,
+      "ay": 20
+    },
+    "sand_pit": {
+      "file": "buildings/industrial/pit_sand_01.png",
+      "ax": 64,
+      "ay": 8
+    },
+    "smelter": {
+      "file": "buildings/industrial/factory_smelter_01.png",
+      "ax": 64,
+      "ay": 31
+    },
+    "cement_works": {
+      "file": "buildings/industrial/factory_cement_01.png",
+      "ax": 60,
+      "ay": 33
+    },
+    "concrete_plant": {
+      "file": "buildings/industrial/factory_concrete_01.png",
+      "ax": 66,
+      "ay": 58
+    },
+    "fisher_hut": {
+      "file": "buildings/food/fisher_hut_01.png",
+      "ax": 50,
+      "ay": 15
+    },
+    "farm": {
+      "file": "buildings/food/farm_01.png",
+      "ax": 78,
+      "ay": 21
+    },
+    "ranch": {
+      "file": "buildings/food/ranch_01.png",
+      "ax": 68,
+      "ay": 10
+    },
+    "mill": {
+      "file": "buildings/food/mill_01.png",
+      "ax": 60,
+      "ay": 46
+    },
+    "bakery": {
+      "file": "buildings/food/bakery_01.png",
+      "ax": 36,
+      "ay": 43
+    },
+    "butcher": {
+      "file": "buildings/food/butcher_01.png",
+      "ax": 31,
+      "ay": 24
+    },
+    "greenhouse": {
+      "file": "buildings/food/greenhouse_01.png",
+      "ax": 60,
+      "ay": 21
+    },
+    "food_store": {
+      "file": "buildings/food/food_store_01.png",
+      "ax": 30,
+      "ay": 20
+    },
+    "glassworks": {
+      "file": "buildings/industrial/glassworks_01.png",
+      "ax": 59,
+      "ay": 49
+    },
+    "apartment": {
+      "file": "buildings/residential/apartment_01.png",
+      "ax": 48,
+      "ay": 71
+    },
+    "depot": {
+      "file": "buildings/industrial/depot_01.png",
+      "ax": 62,
+      "ay": 13
+    },
+    "haulage": {
+      "file": "buildings/logistics/haulage_01.png",
+      "ax": 46,
+      "ay": 25
+    },
+    "silo": {
+      "file": "buildings/logistics/silo_01.png",
+      "ax": 54,
+      "ay": 69
+    }
+  }
+}

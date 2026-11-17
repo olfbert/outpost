@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>OUTPOST</title>
+<meta name="theme-color" content="#1b2327">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="OUTPOST">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="assets/ui/icon-192.png">
+<link rel="apple-touch-icon" href="assets/ui/icon-192.png">
+<link rel="stylesheet" href="styles/main.css">
+</head>
+<body>
+<canvas id="game" aria-label="Spielwelt"></canvas>
+<div class="tilt top" aria-hidden="true"></div>
+<div class="tilt bottom" aria-hidden="true"></div>
+
+<header id="topbar">
+  <button class="icon-btn" id="btn-menu" aria-label="Menü">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+  </button>
+  <div class="title" id="title-btn" role="button" tabindex="0" aria-label="Siedlung umbenennen">
+    <div id="settlement-name">Landezone</div>
+    <div id="date" class="sub"></div>
+  </div>
+  <div class="chip" id="zoom-label"></div>
+</header>
+
+<button id="stock" aria-label="Lager und Verkauf öffnen"></button>
+<div id="devbar" hidden>
+  <span>Entwicklermodus</span>
+  <button class="btn small" data-speed="1">1×</button>
+  <button class="btn small" data-speed="24">1 Std = 1 Mon.</button>
+  <button class="btn small" data-speed="1440">1 Min = 1 Mon.</button>
+  <button class="btn small" data-speed="43200">2 s = 1 Mon.</button>
+</div>
+
+<canvas id="minimap" width="300" height="150" aria-label="Weltübersicht"></canvas>
+
+<div id="side-buttons">
+  <button class="icon-btn" id="btn-zoom-in" aria-label="Hineinzoomen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+  <button class="icon-btn" id="btn-zoom-out" aria-label="Herauszoomen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg></button>
+  <button class="icon-btn" id="btn-home" aria-label="Zur Siedlung"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11l8-7 8 7M6 10v9h12v-9"/></svg></button>
+  <button class="icon-btn" id="btn-world" aria-label="Weltübersicht"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l9 9-9 9-9-9zM3 12h18M12 3v18"/></svg></button>
+</div>
+
+<div id="hint" hidden></div>
+
+<section id="info-panel" hidden aria-live="polite">
+  <button class="close" id="info-close" aria-label="Schließen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  <div id="info-body"></div>
+</section>
+
+<div id="place-bar" hidden>
+  <div id="place-text"></div>
+  <div class="row">
+    <button class="btn" id="place-cancel">Abbrechen</button>
+    <button class="btn primary" id="place-ok">Bauen</button>
+  </div>
+</div>
+
+<div id="buildwrap">
+  <div id="buildtabs" role="tablist"></div>
+  <nav id="buildbar" aria-label="Bauen"></nav>
+</div>
+
+<dialog id="menu">
+  <form method="dialog" class="dialog-head">
+    <h2>OUTPOST</h2>
+    <button class="icon-btn" aria-label="Schließen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  </form>
+  <div class="dialog-body">
+    <h3>Aktuelle Welt</h3>
+    <div class="kv"><span>Seed</span><code id="menu-seed"></code><button class="btn small" id="menu-copy">Kopieren</button></div>
+    <div class="kv"><span>Größe</span><span id="menu-size"></span></div>
+    <div class="kv"><span>Gebäude</span><span id="menu-buildings"></span></div>
+
+    <h3>Neue Welt</h3>
+    <p class="muted">Derselbe Seed erzeugt immer dieselbe Welt. Leer lassen für eine zufällige Welt.</p>
+    <div class="row">
+      <input id="menu-newseed" type="text" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="24" placeholder="Seed (optional)">
+      <button class="btn primary" id="menu-generate">Welt erzeugen</button>
+    </div>
+    <p class="warn" id="menu-warn" hidden></p>
+
+    <h3>Spielstand</h3>
+    <p class="muted">Automatisch im Browser gespeichert. Zum Sichern oder Teilen exportieren – das ist ein teilbarer Spielstand, kein Mehrspieler.</p>
+    <div class="row wrap">
+      <button class="btn" id="save-export">Als Datei exportieren</button>
+      <button class="btn" id="save-code">Share-Code kopieren</button>
+    </div>
+    <div class="row wrap">
+      <label class="btn filebtn">Datei importieren<input type="file" id="save-file" accept=".json,application/json" hidden></label>
+      <button class="btn" id="save-paste">Code einfügen</button>
+      <button class="btn" id="save-restore">Sicherung laden</button>
+    </div>
+    <textarea id="save-text" hidden spellcheck="false" placeholder="Share-Code oder JSON hier einfügen"></textarea>
+    <div class="row" id="save-text-row" hidden><button class="btn primary" id="save-text-ok">Prüfen</button><button class="btn" id="save-text-copy">Kopieren</button></div>
+    <p class="warn" id="save-msg" hidden></p>
+
+    <h3>Darstellung</h3>
+    <label class="check"><input type="checkbox" id="opt-minimap"> Minimap anzeigen</label>
+    <label class="check"><input type="checkbox" id="opt-tilt"> Tiefenunschärfe beim Herauszoomen</label>
+    <label class="check"><input type="checkbox" id="opt-clouds"> Wolken</label>
+    <label class="check"><input type="checkbox" id="opt-debug"> Leistungsanzeige</label>
+
+    <p class="muted" id="menu-version"></p>
+  </div>
+</dialog>
+
+<dialog id="economy">
+  <div class="dialog-head">
+    <h2>Wirtschaft</h2>
+    <button class="icon-btn" id="eco-close" aria-label="Schließen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  </div>
+  <div class="tabs" role="tablist">
+    <button class="tab active" data-tab="stock">Lager &amp; Verkauf</button>
+    <button class="tab" data-tab="ledger">Bilanz</button>
+    <button class="tab" data-tab="prod">Betriebe</button>
+    <button class="tab" data-tab="transport">Transport</button>
+  </div>
+  <div class="dialog-body" id="eco-body"></div>
+</dialog>
+
+<dialog id="importdlg">
+  <h2>Spielstand importieren</h2>
+  <dl id="import-preview"></dl>
+  <p class="muted" id="import-note"></p>
+  <div class="row">
+    <button class="btn" id="import-cancel">Abbrechen</button>
+    <button class="btn primary" id="import-ok">Importieren</button>
+  </div>
+</dialog>
+
+<dialog id="rename">
+  <form method="dialog" id="rename-form">
+    <h2>Siedlung benennen</h2>
+    <p class="muted">Der Name erscheint in der Weltübersicht, im Infofenster und im Spielstand.</p>
+    <input id="rename-input" type="text" maxlength="32" autocomplete="off" spellcheck="false" placeholder="Name der Siedlung">
+    <div class="row">
+      <button class="btn" value="cancel" formnovalidate>Abbrechen</button>
+      <button class="btn primary" value="ok" id="rename-ok">Speichern</button>
+    </div>
+  </form>
+</dialog>
+
+<div id="toast" hidden></div>
+<pre id="debug" hidden></pre>
+<div id="loading">Welt wird erzeugt …</div>
+
+<script type="module" src="src/main.js"></script>
+</body>
+</html>

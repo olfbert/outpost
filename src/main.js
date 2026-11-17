@@ -1,0 +1,628 @@
+// OUTPOST – Einstiegspunkt. Verdrahtet Welt, Spielzustand, Kamera, Renderer
+// und Oberfläche. Gezeichnet wird nur bei Bedarf (Kamera bewegt, Zustand
+// geändert, Inhalte laden nach) – das schont Akku und Gerät.
+
+import { CONFIG } from './config/gameConfig.js';
+import { BUILDINGS } from './config/buildings.js';
+import { ROADS } from './config/roads.js';
+import { costText, GOODS } from './config/economy.js';
+import { Production, sell } from './simulation/production.js';
+import { dateText, monthLabel } from './simulation/gameClock.js';
+import { EconomyPanel } from './ui/economyPanel.js';
+import { createWorld, randomSeed } from './world/worldGenerator.js';
+import { ChunkStore } from './world/chunks.js';
+import { Camera } from './camera/camera.js';
+import { Input } from './camera/input.js';
+import { buildSprites } from './rendering/sprites.js';
+import { loadAssets } from './rendering/assetLoader.js';
+import { Renderer } from './rendering/renderer.js';
+import { Placement } from './building/placement.js';
+import { Roads } from './building/roads.js';
+import { newState, serialize, deserialize, pay } from './state/gameState.js';
+import { saveSlot, loadSlot, storageAvailable } from './save/indexedDb.js';
+import { Hud } from './ui/hud.js';
+import { BuildMenu } from './ui/buildMenu.js';
+import { InfoPanel, MenuDialog } from './ui/panels.js';
+import { Minimap } from './ui/minimap.js';
+import { RenameDialog } from './ui/dialogs.js';
+import { Life } from './life/life.js';
+import { SaveUi } from './ui/saveUi.js';
+import { fieldBox } from './simulation/farming.js';
+import { updatePopulation } from './simulation/population.js';
+import { TRUCK, truckCount } from './simulation/logistics.js';
+import { addGoods } from './simulation/inventory.js';
+
+const $ = (id) => document.getElementById(id);
+const canvas = $('game');
+const params = new URLSearchParams(location.search);
+
+const sprites = buildSprites();
+const renderer = new Renderer(canvas, sprites, CONFIG);
+const camera = new Camera(CONFIG, CONFIG.worldSize);
+const hud = new Hud();
+
+let world, store, state, placement, roads, production, life;
+let lifeT = 0;
+let speed = 1;               // Zeitraffer (nur Entwicklermodus)
+let lastTick = Date.now();
+let lastHud = 0;
+let dirty = true;
+let placing = null;          // Gebäudetyp im Platzierungsmodus
+let ghostPos = null;         // obere Ecke der Vorschau
+let roadTool = null;         // Weg-Werkzeug { type, start, end, plan }
+let lastPointer = 'mouse';
+let prevView = null;         // Ansicht vor dem Sprung in die Weltübersicht
+let saveTimer = 0;
+const overlay = { startZone: false, hover: null, selected: null, ghost: null, road: null, settlement: null };
+const tmp = { x: 0, y: 0 };
+
+// --- Speichern ----------------------------------------------------------------
+function saveNow() {
+  clearTimeout(saveTimer); saveTimer = 0;
+  if (!state) return;
+  state.camera = { x: camera.x, y: camera.y, scale: camera.scale };
+  saveSlot('main', serialize(state));
+}
+function scheduleSave(ms = 1200) {
+  if (saveTimer) return;
+  saveTimer = setTimeout(saveNow, ms);
+}
+
+// --- Welt starten ---------------------------------------------------------------
+function startWorld(st) {
+  state = st;
+  const wcfg = { ...CONFIG, ...state.worldConfig };
+  world = createWorld(state.seed, wcfg);
+  store = new ChunkStore(world, state, wcfg);
+  placement = new Placement(world, store, state);
+  roads = new Roads(world, store, state, placement);
+  production = new Production(world, store, state, placement, CONFIG);
+  placement.production = production;
+  life = new Life(world, store, state, placement, sprites);
+  life.logistics = production.logistics;
+  for (const b of state.buildings) {
+    if (BUILDINGS[b.type]?.production && !b.stats) production.initBuilding(b);
+    if (BUILDINGS[b.type]?.requirements?.nearTrees && b.target === undefined) production.initBuilding(b);
+  }
+  camera.setWorldSize(world.size);
+  renderer.setWorld(world, store, state);
+  minimap.setWorld(world, renderer.far);
+  resize();
+  if (state.camera) {
+    camera.x = state.camera.x; camera.y = state.camera.y; camera.scale = state.camera.scale;
+    camera.clamp();
+  } else {
+    camera.scale = CONFIG.startScale;
+    camera.centerOnTile(world.start.x, world.start.y);
+  }
+  setTool(null);
+  overlay.selected = null; overlay.hover = null;
+  infoPanel.hide();
+  // Zeit nachrechnen, in der das Spiel geschlossen war
+  const away = (Date.now() - state.lastSimAt) / CONFIG.realMsPerGameMonth;
+  if (away > 0) {
+    const res = production.advance(away);
+    afterSim(res, true);
+    if (away > 0.02) hud.toast(`Willkommen zurück – ${away >= 1 ? away.toFixed(1).replace('.', ',') + ' Monate' : Math.round(away * 30) + ' Tage'} wurden nachgerechnet.`, 4500);
+  }
+  lastTick = Date.now();
+  refreshState();
+  dirty = true;
+}
+
+// Nach einem Simulationsschritt: Welt und Anzeigen auffrischen
+function infoCtx() { return { gameMonths: state.gameMonths, variety: state.pop?.variety || 0 }; }
+
+function afterSim(res, quiet = false) {
+  for (const b of res.completed || []) {
+    const def = BUILDINGS[b.type];
+    renderer.invalidateTiles(b.x, b.y, def.footprint.width, def.footprint.height);
+    if (!quiet) hud.toast(`${def.name} ist fertig`, 3000);
+    if (b.id === overlay.selectedId) selectAt(b.x, b.y);
+  }
+  if ((res.completed && res.completed.length) || res.popChanged) { state.rev++; dirty = true; }
+  if (res.season || res.winterChanged) {
+    // Felder wechseln ihr Aussehen; im Winter liegt Schnee
+    const W = world.size;
+    for (const b of state.buildings) {
+      const box = fieldBox(b, W);
+      if (box) store.invalidateArea(box.x0, box.y0, box.x1, box.y1);
+    }
+    if (res.winterChanged) renderer.invalidateAll();
+    else for (const b of state.buildings) { const box = fieldBox(b, W); if (box) renderer.invalidateTiles(box.x0, box.y0, box.x1 - box.x0 + 1, box.y1 - box.y0 + 1, true); }
+    dirty = true;
+  }
+  if (state.buildings.some((b) => b.site)) dirty = true;
+  if (res.felled.length) {
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const t of res.felled) { x0 = Math.min(x0, t.x); y0 = Math.min(y0, t.y); x1 = Math.max(x1, t.x); y1 = Math.max(y1, t.y); }
+    renderer.invalidateTiles(x0, y0, x1 - x0 + 1, y1 - y0 + 1);
+    state.rev++;
+    dirty = true;
+  }
+  if (res.months.length && !quiet) {
+    const led = state.ledger.find((l) => l.month === res.months[res.months.length - 1]);
+    if (led) hud.toast(`Monatsabschluss ${monthLabel(led.month, CONFIG)}: Einnahmen ${led.income.toLocaleString('de-DE')} Cr${led.tax ? ` (davon Steuern ${led.tax.toLocaleString('de-DE')})` : ''}, Betrieb −${led.upkeep.toLocaleString('de-DE')} Cr`, 4500);
+    scheduleSave(500);
+  }
+}
+
+// Alles aktualisieren, was vom Spielzustand abhängt.
+function refreshState() {
+  const has = state.buildings.length > 0;
+  overlay.startZone = !has;
+  overlay.settlement = placement.settlementCenter();
+  hud.setSettlement(state.settlements[0].name);
+  hud.setDate(dateText(state.gameMonths, CONFIG));
+  if (life && state.rev !== life.rev) life.rebuild();
+  hud.setStock(state, life ? life.stats : null);
+  let hint = '';
+  const p = state.pop;
+  if (!has) hint = 'Wähle unten das Landemodul und setze es in die Landezone.';
+  else if (!state.roads.size) hint = 'Lege einen Weg vom Landemodul aus an – die meisten Gebäude brauchen Weganschluss.';
+  else if (p && p.residents && !state.buildings.some((b) => BUILDINGS[b.type].category === 'food')) hint = 'Die Notrationen reichen nur einige Monate – baue eine Fischerhütte oder einen Ackerhof.';
+  else if (production.logistics.stats.util > 0.9) hint = 'Die Lkw sind voll ausgelastet – baue eine Spedition oder kaufe dort weitere Lkw. Schotterwege und nahe Lager sparen Fahrzeit.';
+  else if (production.logistics.stats.waitingPickup > 0 && state.buildings.some((b) => typeof b.status === 'string' && b.status.startsWith('full:'))) hint = 'Ein Betrieb wartet auf Abholung – ist in den Lagern noch Platz? Ein Silo nimmt Schüttgut, eine Lagerhalle alles.';
+  if (placing || roadTool || overlay.selected) hint = '';
+  hud.setHint(hint);
+  $('minimap').hidden = !state.settings.minimap;
+  buildMenu.refresh();
+  dirty = true;
+}
+
+// --- Platzierung ------------------------------------------------------------------
+function lockReason(key) {
+  const [kind, type] = key.split(':');
+  const hasLanding = state.buildings.some((b) => b.type === 'landing_module');
+  if (kind === 'r') return hasLanding ? '' : 'Zuerst das Landemodul setzen';
+  const def = BUILDINGS[type];
+  if (def.unique && state.buildings.some((b) => b.type === type)) return `${def.name} gibt es bereits`;
+  if (type !== 'landing_module' && !hasLanding) return 'Zuerst das Landemodul setzen';
+  const miss = (def.unlock || []).filter((u) => !state.buildings.some((b) => b.type === u && !b.site));
+  if (miss.length) return 'Benötigt zuerst (fertig gebaut): ' + miss.map((u) => BUILDINGS[u].name).join(', ');
+  return '';
+}
+
+function setGhost(x, y) {
+  if (!placing) return;
+  const def = BUILDINGS[placing];
+  const gx = x - (def.footprint.width >> 1), gy = y - (def.footprint.height >> 1);
+  if (ghostPos && ghostPos.x === gx && ghostPos.y === gy && overlay.ghost) return;
+  ghostPos = { x: gx, y: gy };
+  updateGhost();
+}
+
+function updateGhost() {
+  if (!placing || !ghostPos) { overlay.ghost = null; return; }
+  const v = placement.validate(placing, ghostPos.x, ghostPos.y);
+  overlay.ghost = v;
+  buildMenu.setStatus(v, lastPointer !== 'mouse');
+  dirty = true;
+}
+
+// key: 'b:<gebäude>', 'r:<wegtyp>' oder null
+function setTool(key) {
+  const [kind, type] = key ? key.split(':') : [null, null];
+  placing = kind === 'b' ? type : null;
+  roadTool = kind === 'r' ? { type: +type, start: null, end: null, plan: null } : null;
+  overlay.ghost = null; ghostPos = null; overlay.road = null;
+  canvas.classList.toggle('placing', !!key);
+  buildMenu.setActive(key);
+  if (!key) { refreshState(); return; }
+  overlay.selected = null;
+  infoPanel.hide();
+  hud.setHint('');
+  if (roadTool) {
+    if (camera.scale < CONFIG.lodDetail) camera.zoomTo(camera.vw / 2, camera.vh / 2, 1);
+    buildMenu.setRoadStatus(roadTool.type, null, null, lastPointer !== 'mouse');
+    dirty = true;
+    return;
+  }
+  beginGhost();
+}
+
+// Für Tests/Kompatibilität: Gebäude-Werkzeug direkt wählen.
+function setPlacing(type) { setTool(type ? 'b:' + type : null); }
+
+function beginGhost() {
+  // Zum Bauen nah genug heranzoomen
+  if (camera.scale < CONFIG.lodDetail) camera.zoomTo(camera.vw / 2, camera.vh / 2, 1);
+  const c = camera.centerTile(tmp);
+  ghostPos = null;
+  setGhost(Math.floor(c.x), Math.floor(c.y));
+}
+
+function tryPlace() {
+  if (!placing || !ghostPos) return;
+  const v = placement.validate(placing, ghostPos.x, ghostPos.y);
+  if (!v.ok) { hud.toast(v.reasons[0] || 'Hier kann nicht gebaut werden'); updateGhost(); return; }
+  const def = BUILDINGS[placing];
+  const b = placement.place(placing, ghostPos.x, ghostPos.y);
+  if (!b) return;
+  renderer.invalidateTiles(b.x, b.y, def.footprint.width, def.footprint.height);
+  if (b._fieldBox) { const f = b._fieldBox; renderer.invalidateTiles(f.x0, f.y0, f.x1 - f.x0 + 1, f.y1 - f.y0 + 1, true); }
+  if (b.site) {
+    const short = v.matShort && v.matShort.length ? ' · Material fehlt noch – die Baustelle wartet darauf' : '';
+    hud.toast(`Baustelle ${def.name} · ${costText({ money: def.buildCost.money })} bezahlt${short}`, short ? 4000 : 2600);
+  } else hud.toast(`${def.name} gebaut · ${costText(def.buildCost)}`);
+  refreshState();
+  saveNow();
+  if (def.unique) {
+    setTool(null);
+    if (b.type === 'landing_module') renameDialog.open(state.settlements[0].name);
+  } else updateGhost();
+}
+
+// --- Wege -----------------------------------------------------------------------------
+function updateRoadPlan() {
+  const t = roadTool;
+  overlay.road = null;
+  t.plan = t.start && t.end ? roads.plan(t.type, t.start, t.end) : null;
+  if (t.plan) overlay.road = { tiles: t.plan.tiles, start: t.start };
+  else if (t.start) overlay.road = { tiles: [], start: t.start };
+  buildMenu.setRoadStatus(t.type, t.plan, t.start, lastPointer !== 'mouse');
+  dirty = true;
+}
+
+function roadPoint(x, y, commitIfMouse) {
+  const t = roadTool;
+  if (!t.start) { t.start = { x, y }; t.end = lastPointer === 'mouse' ? null : { x, y }; updateRoadPlan(); return; }
+  t.end = { x, y };
+  updateRoadPlan();
+  if (commitIfMouse) buildRoad();
+}
+
+function buildRoad() {
+  const t = roadTool;
+  if (!t || !t.plan) return;
+  if (!t.plan.ok) { hud.toast(t.plan.reasons[0] || 'Hier kann kein Weg gebaut werden'); return; }
+  const n = t.plan.newTiles, cost = t.plan.cost;
+  const box = roads.build(t.plan);
+  if (!box) return;
+  renderer.invalidateTiles(box.x0, box.y0, box.x1 - box.x0 + 1, box.y1 - box.y0 + 1, true);
+  hud.toast(`${n} Felder ${ROADS[t.type].name} · ${costText(cost)}`);
+  // am Ende weiterbauen: neues Teilstück beginnt am Ziel
+  t.start = lastPointer === 'mouse' ? null : t.end;
+  t.end = lastPointer === 'mouse' ? null : t.end;
+  updateRoadPlan();
+  hud.setStock(state);
+  buildMenu.refresh();
+  saveNow();
+}
+
+// --- Auswahl ------------------------------------------------------------------------
+function selectAt(x, y) {
+  if (!world.inBounds(x, y)) { overlay.selected = null; infoPanel.hide(); dirty = true; return; }
+  const b = placement.buildingAt(x, y);
+  const r = roads.at(x, y);
+  if (b) {
+    const def = BUILDINGS[b.type];
+    overlay.selected = { x: b.x, y: b.y, w: def.footprint.width, h: def.footprint.height };
+    overlay.selectedId = b.id;
+    infoPanel.showBuilding(b, placement.refundFor(b), state.settlements[0].name, infoCtx());
+  } else if (r) {
+    overlay.selectedId = null;
+    overlay.selected = { x, y, w: 1, h: 1 };
+    infoPanel.showRoad(x, y, r, roads.shapeName(x, y));
+  } else {
+    overlay.selected = { x, y, w: 1, h: 1 };
+    infoPanel.showTile(x, y, store.tile(x, y), world, CONFIG);
+  }
+  hud.setHint('');
+  dirty = true;
+}
+
+// --- Oberfläche -----------------------------------------------------------------------
+const buildMenu = new BuildMenu(sprites, {
+  select(key) {
+    if (key) {
+      const why = lockReason(key);
+      if (why) { hud.toast(why); return; }
+    }
+    setTool(key);
+  },
+  confirm: () => (roadTool ? buildRoad() : tryPlace()),
+  cancel: () => setTool(null),
+  lockReason,
+});
+
+const economy = new EconomyPanel({
+  state: () => state,
+  capacity: () => production.capacity(),
+  pop: () => life.stats,
+  logistics: () => production.logistics,
+  cfg: CONFIG,
+  sell(good, n) {
+    const money = sell(state, good, n, GOODS[good].price, GOODS[good].name);
+    if (money) hud.toast(`${n} ${GOODS[good].name} verkauft · +${money.toLocaleString('de-DE')} Cr`);
+    refreshState();
+    saveNow();
+  },
+  focus(id) {
+    const b = state.buildings.find((q) => q.id === id);
+    if (!b) return;
+    camera.stop();
+    camera.flyToTile(b.x + 1, b.y + 1, Math.max(camera.scale, 1));
+    selectAt(b.x, b.y);
+  },
+});
+$('stock').addEventListener('click', () => economy.open('stock'));
+
+const renameDialog = new RenameDialog((name) => {
+  state.settlements[0].name = name;
+  refreshState();
+  saveNow();
+  hud.toast(`Siedlung heißt jetzt „${name}“`);
+});
+$('title-btn').addEventListener('click', () => renameDialog.open(state.settlements[0].name));
+$('title-btn').addEventListener('keydown', (e) => { if (e.key === 'Enter') renameDialog.open(state.settlements[0].name); });
+
+const infoPanel = new InfoPanel({
+  close() { overlay.selected = null; infoPanel.hide(); dirty = true; },
+  rename: () => renameDialog.open(state.settlements[0].name),
+  togglePause(id) {
+    const b = state.buildings.find((q) => q.id === id);
+    if (!b) return;
+    b.paused = !b.paused;
+    b.status = b.paused ? 'paused' : 'idle';
+    updatePopulation(state, 0, {});
+    state.rev++;
+    selectAt(b.x, b.y);
+    saveNow();
+  },
+  togglePriority(id) {
+    const b = state.buildings.find((q) => q.id === id);
+    if (!b) return;
+    b.priority = !b.priority;
+    updatePopulation(state, 0, {});
+    state.rev++;
+    selectAt(b.x, b.y);
+    hud.toast(b.priority ? `${BUILDINGS[b.type].name} bekommt zuerst Arbeiter` : 'Vorrang aufgehoben');
+    saveNow();
+  },
+  setCrop(id, crop) {
+    const b = state.buildings.find((q) => q.id === id);
+    if (!b) return;
+    b.crop = crop;
+    const box = fieldBox(b, world.size);
+    if (box) { store.invalidateArea(box.x0, box.y0, box.x1, box.y1); renderer.invalidateTiles(box.x0, box.y0, box.x1 - box.x0 + 1, box.y1 - box.y0 + 1, true); }
+    selectAt(b.x, b.y);
+    hud.toast(`Ab der nächsten Aussaat: ${GOODS[crop].name}`);
+    saveNow();
+  },
+  reopen(b) { selectAt(b.x, b.y); },
+  buyTruck(id) {
+    const b = state.buildings.find((q) => q.id === id);
+    if (!b) return;
+    if (state.money < TRUCK.price) { hud.toast('Nicht genug Geld für einen Lkw'); return; }
+    pay(state, { money: TRUCK.price }, 1, 'Lkw gekauft');
+    b.trucks = (b.trucks || 0) + 1;
+    selectAt(b.x, b.y);
+    hud.toast(`Neuer Lkw · jetzt ${truckCount(state)} Lkw im Einsatz`);
+    saveNow();
+  },
+  removeRoad(x, y) {
+    const r = roads.remove(x, y);
+    if (r) {
+      renderer.invalidateTiles(x, y, 1, 1, true);
+      hud.toast(`${ROADS[r].name} entfernt`);
+    }
+    overlay.selected = null;
+    infoPanel.hide();
+    refreshState();
+    saveNow();
+  },
+  demolish(id) {
+    const b = placement.remove(id);
+    if (b) {
+      const def = BUILDINGS[b.type];
+      renderer.invalidateTiles(b.x, b.y, def.footprint.width, def.footprint.height, true);
+      if (b._fieldBox) { const f = b._fieldBox; renderer.invalidateTiles(f.x0, f.y0, f.x1 - f.x0 + 1, f.y1 - f.y0 + 1, true); }
+      updatePopulation(state, 0, {});
+      hud.toast(`${def.name} ${b.site ? 'Baustelle abgebrochen' : 'abgerissen'} · Erstattung ${costText(b._refund)}`);
+    }
+    overlay.selected = null;
+    infoPanel.hide();
+    refreshState();
+    saveNow();
+  },
+});
+
+const minimap = new Minimap($('minimap'), camera, () => { dirty = true; scheduleSave(4000); });
+
+const menu = new MenuDialog({
+  getInfo: () => ({
+    seed: state.seed, size: world.size, metersPerTile: CONFIG.metersPerTile,
+    buildings: state.buildings.length, roads: state.roads.size, settings: state.settings, storage: storageAvailable,
+  }),
+  async newWorld(seed) {
+    // Bestehenden Stand nie still überschreiben: vorher als Sicherung ablegen.
+    if (state.buildings.length || state.roads.size) await saveSlot('backup', serialize(state));
+    const st = newState(seed || randomSeed(), CONFIG);
+    st.settings = { ...state.settings };
+    startWorld(st);
+    saveNow();
+    hud.toast(`Neue Welt · Seed ${st.seed}`);
+  },
+  setOption(key, value) {
+    state.settings[key] = value;
+    refreshState();
+    scheduleSave();
+  },
+});
+
+const saveUi = new SaveUi({
+  cfg: CONFIG,
+  serialize: () => { state.camera = { x: camera.x, y: camera.y, scale: camera.scale }; return serialize(state); },
+  backup: () => loadSlot('backup'),
+  closeMenu: () => $('menu').close(),
+  async apply(data) {
+    // Nie still überschreiben: aktuellen Stand sichern
+    await saveSlot('backup', serialize(state));
+    const st = deserialize(JSON.parse(JSON.stringify(data)), CONFIG);
+    st.lastSimAt = Date.now();          // keine Nachrechnung der Zeit zwischen Export und Import
+    st.settings = { ...st.settings, debug: state.settings.debug };
+    startWorld(st);
+    saveNow();
+    hud.toast(`Spielstand „${st.settlements[0].name}“ geladen · alter Stand gesichert`, 4000);
+  },
+});
+menu.onOpen = () => saveUi.reset();
+
+$('btn-zoom-in').addEventListener('click', () => { camera.zoomTo(camera.vw / 2, camera.vh / 2, (camera.target?.scale ?? camera.scale) * CONFIG.zoomStep); dirty = true; });
+$('btn-zoom-out').addEventListener('click', () => { camera.zoomTo(camera.vw / 2, camera.vh / 2, (camera.target?.scale ?? camera.scale) / CONFIG.zoomStep); dirty = true; });
+$('btn-home').addEventListener('click', () => {
+  const c = placement.settlementCenter() || world.start;
+  camera.stop();
+  camera.flyToTile(c.x, c.y, 1);
+  prevView = null;
+  dirty = true;
+});
+$('btn-world').addEventListener('click', () => {
+  camera.stop();
+  if (prevView && camera.scale < camera.minScale * 1.6) {
+    camera.fly = { x: prevView.x, y: prevView.y, scale: prevView.scale };
+    prevView = null;
+  } else {
+    prevView = { x: camera.x, y: camera.y, scale: camera.scale };
+    camera.flyToTile(world.size / 2, world.size / 2, camera.minScale);
+  }
+  dirty = true;
+});
+
+// --- Eingabe ----------------------------------------------------------------------------
+const input = new Input(canvas, camera, {
+  tap(sx, sy, type) {
+    lastPointer = type;
+    const t = camera.screenToTile(sx, sy, tmp);
+    const x = Math.floor(t.x), y = Math.floor(t.y);
+    if (roadTool) { roadPoint(x, y, type === 'mouse'); return; }
+    if (placing) {
+      setGhost(x, y);
+      if (type === 'mouse') tryPlace();
+      return;
+    }
+    selectAt(x, y);
+    refreshState();
+  },
+  hover(sx, sy) {
+    lastPointer = 'mouse';
+    if (sx < 0) { if (overlay.hover) { overlay.hover = null; dirty = true; } return; }
+    const t = camera.screenToTile(sx, sy, tmp);
+    const x = Math.floor(t.x), y = Math.floor(t.y);
+    if (roadTool) {
+      if (roadTool.start && (!roadTool.end || roadTool.end.x !== x || roadTool.end.y !== y)) { roadTool.end = { x, y }; updateRoadPlan(); }
+      if (!overlay.hover || overlay.hover.x !== x || overlay.hover.y !== y) { overlay.hover = { x, y }; dirty = true; }
+      return;
+    }
+    if (placing) { setGhost(x, y); return; }
+    if (!overlay.hover || overlay.hover.x !== x || overlay.hover.y !== y) { overlay.hover = { x, y }; dirty = true; }
+  },
+  change() { dirty = true; scheduleSave(4000); },
+  cancel() {
+    if (roadTool && roadTool.start && lastPointer === 'mouse') { roadTool.start = null; roadTool.end = null; updateRoadPlan(); }
+    else if (placing || roadTool) setTool(null);
+    else if (overlay.selected) { overlay.selected = null; infoPanel.hide(); dirty = true; }
+  },
+});
+
+function resize() {
+  const w = window.innerWidth, h = window.innerHeight;
+  renderer.resize(w, h);
+  camera.resize(w, h);
+  dirty = true;
+}
+window.addEventListener('resize', resize);
+window.addEventListener('orientationchange', () => setTimeout(resize, 200));
+document.addEventListener('visibilitychange', () => { if (document.hidden) saveNow(); else dirty = true; });
+window.addEventListener('pagehide', saveNow);
+
+// --- Hauptschleife ------------------------------------------------------------------------
+let last = performance.now(), fpsT = last, frames = 0, fps = 0, lastTilt = -1;
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000);
+  last = now;
+  if (camera.update(dt)) dirty = true;
+  if (input.update(dt)) { dirty = true; scheduleSave(4000); }
+  // Simulation: fließend nach echter Zeit (im Entwicklermodus beschleunigt)
+  const wall = Date.now(), gap = wall - lastTick;
+  if (gap >= (speed > 1 ? 100 : 1000)) {
+    const months = (gap > 5000 ? gap : gap * speed) / CONFIG.realMsPerGameMonth;
+    lastTick = wall;
+    afterSim(production.advance(months));
+    if (wall - lastHud > (speed > 1 ? 250 : 1000)) {
+      lastHud = wall;
+      hud.setStock(state, life.stats);
+      hud.setDate(dateText(state.gameMonths, CONFIG));
+      buildMenu.refresh();
+      if (infoPanel.current) { const b = state.buildings.find((q) => q.id === infoPanel.current); if (b) infoPanel.updateBuilding(b, infoCtx()); }
+      if (economy.isOpen) economy.render(false);
+      if (placing) updateGhost();
+      scheduleSave(speed > 1 ? 5000 : 30000);
+    }
+  }
+  // Menschen und Tiere (nur in der Nahansicht sichtbar, ca. 30 Bilder/s)
+  if (camera.scale >= CONFIG.lodDetail) {
+    lifeT += dt;
+    if (lifeT >= 1 / 30) {
+      const s = camera.scale, view = { x0: camera.x - camera.vw / 2 / s, y0: camera.y - camera.vh / 2 / s, x1: camera.x + camera.vw / 2 / s, y1: camera.y + camera.vh / 2 / s };
+      life.update(Math.min(lifeT, 0.25), view);
+      lifeT = 0;
+      if (life.count) dirty = true;
+    }
+  } else if (state.rev !== life.rev) life.rebuild();
+  if (dirty) {
+    dirty = renderer.draw(camera, overlay, camera.scale >= CONFIG.lodDetail ? life : null);
+    hud.setZoom(camera.scale);
+    const tilt = state.settings.tilt === false ? 0 : Math.max(0, Math.min(1, (0.22 - camera.scale) / 0.16));
+    if (tilt !== lastTilt) { document.documentElement.style.setProperty('--tilt', tilt.toFixed(3)); lastTilt = tilt; }
+    minimap.draw(overlay.settlement);
+    frames++;
+  }
+  if (now - fpsT > 500) {
+    fps = Math.round((frames * 1000) / (now - fpsT)); frames = 0; fpsT = now;
+    if (state.settings.debug) {
+      const s = renderer.stats;
+      hud.setDebug(true, `Bilder/s ${fps}  Frame ${s.ms.toFixed(1)} ms\nStufe ${s.level}  Zoom ${camera.scale.toFixed(4)}\nKacheln ${s.cells}  Chunks ${store.map.size}\nObjekte ${s.objects}  Figuren ${s.agents || 0}  Flächenbilder ${renderer.far.cache.size}`);
+    } else hud.setDebug(false);
+  }
+  requestAnimationFrame(frame);
+}
+
+// --- Start ------------------------------------------------------------------------------------
+async function boot() {
+  await loadAssets(sprites);
+  let st = null;
+  const forced = params.get('seed');
+  if (!forced) {
+    try {
+      const saved = await loadSlot('main');
+      if (saved) st = deserialize(saved, CONFIG);
+    } catch (err) {
+      console.warn(err);
+      hud.toast(`Spielstand konnte nicht geladen werden: ${err.message}`, 5000);
+    }
+  }
+  if (!st) st = newState(forced || randomSeed(), CONFIG);
+  if (params.get('debug') === '1') st.settings.debug = true;
+  if (params.get('dev') === '1' || location.hash === '#dev') {   // Artifact-Seiten reichen nur #… durch
+    const bar = $('devbar');
+    bar.hidden = false;
+    const mark = () => { for (const b of bar.querySelectorAll('button')) b.classList.toggle('active', +b.dataset.speed === speed); };
+    for (const b of bar.querySelectorAll('button')) b.addEventListener('click', () => { speed = +b.dataset.speed; mark(); });
+    mark();
+  }
+  startWorld(st);
+  $('loading').classList.add('done');
+  setTimeout(() => $('loading').remove(), 500);
+  requestAnimationFrame(frame);
+  // Für Tests und Fehlersuche
+  window.__outpost = { camera, renderer, sprites, get world() { return world; }, get state() { return state; }, get store() { return store; }, get placement() { return placement; }, get roads() { return roads; }, setTool, setPlacing, tryPlace, buildRoad, roadPoint, get roadTool() { return roadTool; }, get production() { return production; }, get life() { return life; }, economy, setSpeed: (v) => { speed = v; }, setGhost, selectAt, isDirty: () => dirty,
+    give(goods) { addGoods(state, goods); },
+    simulate(months) { const r = production.advance(months); afterSim(r, true); refreshState(); return r; } };
+}
+
+boot().catch((err) => {
+  console.error(err);
+  $('loading').textContent = 'Start fehlgeschlagen: ' + err.message;
+});

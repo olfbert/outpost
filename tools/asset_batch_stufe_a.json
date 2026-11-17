@@ -1,0 +1,124 @@
+{
+  "_hinweis": "Stufe A (v0.7.0): Versorgungsgebäude. Verarbeitung: python3 -I tools/asset_batch.py tools/asset_batch_stufe_a.json",
+  "items": [
+    {
+      "job": "2acf8131",
+      "sprite": "fisher_hut",
+      "out": "assets/buildings/food/fisher_hut_01.png",
+      "width": 68,
+      "footprint": "1x1",
+      "hue": "285,345",
+      "tone": "0.9,0.95",
+      "shadow": 0.35,
+      "grow": 4,
+      "open": 3
+    },
+    {
+      "job": "66258d4b",
+      "sprite": "farm",
+      "out": "assets/buildings/food/farm_01.png",
+      "width": 126,
+      "footprint": "2x2",
+      "hue": "290,340",
+      "tone": "0.9,0.95",
+      "shadow": 0.3,
+      "grow": 4,
+      "open": 3
+    },
+    {
+      "job": "d9d99c50",
+      "sprite": "ranch",
+      "out": "assets/buildings/food/ranch_01.png",
+      "width": 126,
+      "footprint": "2x2",
+      "hue": "285,345",
+      "tone": "0.9,0.95",
+      "shadow": 0.3,
+      "grow": 4
+    },
+    {
+      "job": "f9dd219f",
+      "sprite": "mill",
+      "out": "assets/buildings/food/mill_01.png",
+      "width": 126,
+      "footprint": "2x2",
+      "hue": "285,385",
+      "tone": "0.9,0.95",
+      "shadow": 0.3,
+      "erode": 2
+    },
+    {
+      "job": "9b0c90eb",
+      "sprite": "bakery",
+      "out": "assets/buildings/food/bakery_01.png",
+      "width": 68,
+      "footprint": "1x1",
+      "hue": "290,340",
+      "tone": "0.9,0.95",
+      "shadow": 0.35,
+      "grow": 4
+    },
+    {
+      "job": "dc620bb3",
+      "sprite": "butcher",
+      "out": "assets/buildings/food/butcher_01.png",
+      "width": 68,
+      "footprint": "1x1",
+      "hue": "290,340",
+      "tone": "0.9,0.95",
+      "shadow": 0.35
+    },
+    {
+      "job": "2497bb9e",
+      "sprite": "greenhouse",
+      "out": "assets/buildings/food/greenhouse_01.png",
+      "width": 126,
+      "footprint": "2x2",
+      "hue": "285,345",
+      "tone": "0.9,0.95",
+      "shadow": 0.3
+    },
+    {
+      "job": "1a3ead17",
+      "sprite": "food_store",
+      "out": "assets/buildings/food/food_store_01.png",
+      "width": 68,
+      "footprint": "1x1",
+      "hue": "285,345",
+      "tone": "0.9,0.95",
+      "shadow": 0.35
+    },
+    {
+      "job": "e52e86a0",
+      "sprite": "glassworks",
+      "out": "assets/buildings/industrial/glassworks_01.png",
+      "width": 126,
+      "footprint": "2x2",
+      "hue": "300,340",
+      "tone": "0.9,0.95",
+      "shadow": 0.3,
+      "erode": 2,
+      "grow": 4
+    },
+    {
+      "job": "e902e773",
+      "sprite": "apartment",
+      "out": "assets/buildings/residential/apartment_01.png",
+      "width": 120,
+      "footprint": "2x2",
+      "hue": "285,345",
+      "tone": "0.9,0.95",
+      "shadow": 0.3
+    },
+    {
+      "job": "7ed5ebbd",
+      "sprite": "depot",
+      "out": "assets/buildings/industrial/depot_01.png",
+      "width": 126,
+      "footprint": "2x2",
+      "hue": "285,345",
+      "tone": "0.9,0.95",
+      "shadow": 0.3
+    }
+  ]
+}

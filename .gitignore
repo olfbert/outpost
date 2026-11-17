@@ -1,0 +1,5 @@
+# Originale der generierten Bilder (nur lokal, nicht für die Webseite)
+assets_src/
+node_modules/
+.DS_Store
+*.zip

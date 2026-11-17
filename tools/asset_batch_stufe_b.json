@@ -1,0 +1,28 @@
+{
+  "_hinweis": "Stufe B (v0.8.x): Spedition und Silo. Verarbeitung: python3 -I tools/asset_batch.py tools/asset_batch_stufe_b.json",
+  "items": [
+    {
+      "job": "2fd9ded8",
+      "sprite": "haulage",
+      "out": "assets/buildings/logistics/haulage_01.png",
+      "width": 126,
+      "footprint": "2x2",
+      "hue": "285,345",
+      "tone": "0.9,0.95",
+      "shadow": 0.3,
+      "grow": 4,
+      "open": 3
+    },
+    {
+      "job": "01b53c4d",
+      "sprite": "silo",
+      "out": "assets/buildings/logistics/silo_01.png",
+      "width": 120,
+      "footprint": "2x2",
+      "hue": "285,345",
+      "tone": "0.9,0.95",
+      "shadow": 0.3,
+      "erode": 2
+    }
+  ]
+}
