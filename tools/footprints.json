@@ -1,5 +1,5 @@
 {
- "_hinweis": "Grundflächen der Gebäude-Sprites (aus src/config/buildings.js erzeugt).",
+ "_hinweis": "Grundfl\u00e4chen der Geb\u00e4ude-Sprites (aus src/config/buildings.js erzeugt).",
  "landing_module": [
   2,
   2
@@ -138,7 +138,7 @@
  ],
  "duplex": [
   2,
-  1
+  2
  ],
  "dormitory": [
   2,

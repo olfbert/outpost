@@ -20,6 +20,7 @@ from PIL import Image
 
 K = 0.42          # Schattenlänge (in y-Pixeln) je Pixel Höhe; x-Versatz ist doppelt so groß
 ALPHA = 78
+DARKEN_PAD = False   # Abdunklung am Fuß auf der Platte: aus (erzeugte Streifen, wirkt bei Wiederholung doppelt)
 man_path = 'assets/manifest.json'
 man = json.load(open(man_path))
 fps = {k: v for k, v in json.load(open('tools/footprints.json')).items() if not k.startswith('_')}
@@ -125,7 +126,7 @@ for name, (fw, fh) in fps.items():
     o2 = out[:spr.shape[0], :spr.shape[1]]
     o2[m] = spr[m]
     # Schatten auf der Grundplatte nur am Fuß hoher Objekte, leicht abgedunkelt
-    dk = m & shc[:spr.shape[0], :spr.shape[1]] & pad[:spr.shape[0], :spr.shape[1]] & near[:spr.shape[0], :spr.shape[1]]
+    dk = DARKEN_PAD & m & shc[:spr.shape[0], :spr.shape[1]] & pad[:spr.shape[0], :spr.shape[1]] & near[:spr.shape[0], :spr.shape[1]]
     o2[dk, :3] = (o2[dk, :3].astype(int) * 0.8).astype(np.uint8)
     Image.fromarray(out, 'RGBA').save(path)
     print('Schatten:', name, f'Höhe max {int(hcol.max())}', f'{W}x{H} -> {NW}x{NH}')

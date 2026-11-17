@@ -25,7 +25,7 @@
  "warehouse": 1,
  "haulage": 3,
  "container_home": 3,
- "duplex": 2,
+ "duplex": 8,
  "dormitory": 2,
  "villa": 3,
  "highrise": 3

@@ -277,11 +277,11 @@ export const BUILDINGS = {
   },
   duplex: {
     id: 'duplex', name: 'Doppelhaus', category: 'residential',
-    description: 'Zwei Haushälften unter einem Dach für zusammen 8 Bewohner. Über 5 Bewohner erst mit zwei Nahrungssorten.',
-    footprint: { width: 2, height: 1 },
+    description: 'Zwei Haushälften unter einem Dach mit großem Garten für zusammen 10 Bewohner. Über 6 Bewohner erst mit zwei Nahrungssorten.',
+    footprint: { width: 2, height: 2 },
     buildCost: { money: 5400, planks: 36, stone: 40 },
     requirements: { terrain: SOFT_GROUND, maxSlope: 0.05, roadAccess: true },
-    upkeep: 28, residents: 8, needsVariety: { min: 2, below: 5 },
+    upkeep: 32, residents: 10, needsVariety: { min: 2, below: 6 },
     art: { kind: 'box', wallH: 17, gable: 10, wall: '#cdbb98', roof: '#7a4a32', siding: 0, door: true, windows: true, chimney: true },
   },
   dormitory: {

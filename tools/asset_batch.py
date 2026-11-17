@@ -20,6 +20,7 @@ for it in cfg['items']:
     if it.get('tone'): cmd += ['--tone', it['tone']]
     if it.get('grow'): cmd += ['--grow', str(it['grow'])]
     if it.get('open'): cmd += ['--open', str(it['open'])]
+    if it.get('colors'): cmd += ['--colors', str(it['colors'])]
     if it.get('keep') is not None: cmd += ['--keep', str(it['keep'])]
     os.makedirs(os.path.dirname(it['out']), exist_ok=True)
     res = json.loads(subprocess.check_output(cmd).decode().strip().splitlines()[-1])

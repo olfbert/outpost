@@ -222,9 +222,9 @@
     },
     "duplex": {
       "file": "buildings/residential/duplex_01.png",
-      "ax": 31,
-      "ay": 24,
-      "plinthCut": 2
+      "ax": 58,
+      "ay": 16,
+      "plinthCut": 8
     },
     "dormitory": {
       "file": "buildings/residential/dormitory_01.png",
@@ -234,8 +234,8 @@
     },
     "villa": {
       "file": "buildings/residential/villa_01.png",
-      "ax": 114,
-      "ay": 19,
+      "ax": 64,
+      "ay": 5,
       "plinthCut": 3
     },
     "highrise": {

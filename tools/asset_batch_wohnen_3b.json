@@ -1,0 +1,31 @@
+{
+  "_hinweis": "Neue Fassungen von Doppelhaus und Villa (ohne angeschnittene Ränder, Pool im Grundstück). Verarbeitung: asset_batch.py, dann flatten_plinth.py, dann reshadow.py duplex villa",
+  "items": [
+    {
+      "job": "flo_duplex_v2",
+      "sprite": "duplex",
+      "out": "assets/buildings/residential/duplex_01.png",
+      "width": 124,
+      "footprint": "2x2",
+      "hue": "280,345",
+      "tone": "0.9,0.95",
+      "shadow": 0.3,
+      "open": 2,
+      "erode": 2,
+      "colors": 64
+    },
+    {
+      "job": "flo_villa_v2",
+      "sprite": "villa",
+      "out": "assets/buildings/residential/villa_01.png",
+      "width": 126,
+      "footprint": "2x2",
+      "hue": "280,345",
+      "tone": "0.9,0.95",
+      "shadow": 0.3,
+      "open": 2,
+      "erode": 2,
+      "colors": 200
+    }
+  ]
+}
