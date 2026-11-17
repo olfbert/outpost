@@ -340,3 +340,4 @@ dialog#trade .dialog-body { overflow: auto; flex: 1 1 auto; min-height: 0; paddi
 dialog#trade .tabs { overflow-x: auto; flex-wrap: nowrap; }
 dialog#trade h3 { margin: 14px 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
 dialog#trade .pos { color: var(--ok); }
+#opt-daynight { margin-left: 8px; background: var(--panel-solid); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 2px 6px; font: inherit; }

@@ -331,6 +331,7 @@ export class Renderer {
       this._drawBuildingsFlat(lvl, cam, s);
     }
     this._drawClouds(cam, view);
+    this._drawNight(cam, view, s, ox, oy);
     this._drawOverlay(cam, overlay, s, ox, oy, lvl);
 
     if (this.far.queue.length) {
@@ -457,6 +458,66 @@ export class Renderer {
     ctx.fillStyle = strong ? '#33291c' : '#e2ddd0';
     ctx.textBaseline = 'middle';
     ctx.fillText(text, x + pad, y + hgt / 2 + 1);
+    ctx.restore();
+  }
+
+  // Dunkelheit nach echter Uhrzeit (0 = Tag, bis 0,58 = Nacht)
+  nightLevel(date = new Date()) {
+    const mode = this.state.settings.daynight || 'auto';
+    if (mode === 'day') return 0;
+    if (mode === 'night') return 0.58;
+    const h = date.getHours() + date.getMinutes() / 60;
+    const max = 0.58;
+    if (h >= 7.5 && h < 18) return 0;
+    if (h >= 18 && h < 20.5) return max * (h - 18) / 2.5;
+    if (h >= 5 && h < 7.5) return max * (7.5 - h) / 2.5;
+    return max;
+  }
+
+  _glow() {
+    if (this._glowImg) return this._glowImg;
+    const c = document.createElement('canvas'); c.width = c.height = 64;
+    const g = c.getContext('2d'), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    gr.addColorStop(0, 'rgba(255, 220, 140, 0.95)'); gr.addColorStop(0.35, 'rgba(255, 190, 100, 0.45)'); gr.addColorStop(1, 'rgba(255, 170, 80, 0)');
+    g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+    this._glowImg = c;
+    return c;
+  }
+
+  _drawNight(cam, view, s, ox, oy) {
+    const n = this.nightLevel();
+    if (n <= 0.01) return;
+    const ctx = this.ctx, vw = this.canvas.width, vh = this.canvas.height;
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = `rgba(10, 18, 44, ${n})`;
+    ctx.fillRect(0, 0, vw, vh);
+    // Lichter: Laternen hell, Fenster von Häusern und Betrieben warm und klein
+    ctx.globalCompositeOperation = 'lighter';
+    const glow = this._glow(), k = Math.min(1, n / 0.45);
+    const list = this.state.npcBuildings && this.state.npcBuildings.length ? this.state.buildings.concat(this.state.npcBuildings) : this.state.buildings;
+    for (const b of list) {
+      if (b.site) continue;
+      const def = BUILDINGS[b.type];
+      const wx = (b.x - b.y) * 32 + (def.footprint.width - def.footprint.height) * 16, wy = (b.x + b.y) * 16 + (def.footprint.width + def.footprint.height) * 8;
+      if (wx < view.x0 - 80 || wx > view.x1 + 80 || wy < view.y0 - 80 || wy > view.y1 + 120) continue;
+      const sx = ox + wx * s, sy = oy + wy * s;
+      if (b.type === 'lamp') {
+        const r = 70 * s;
+        ctx.globalAlpha = 0.9 * k;
+        ctx.drawImage(glow, sx + 6 * s - r, sy - 12 * s - r * 0.6, r * 2, r * 1.4);
+        ctx.globalAlpha = k;
+        ctx.drawImage(glow, sx + 6 * s - 6 * s, sy - 28 * s - 6 * s, 12 * s, 12 * s);
+      } else if (def.residents || def.workers) {
+        const r = (def.footprint.width > 1 ? 34 : 22) * s;
+        ctx.globalAlpha = 0.45 * k;
+        ctx.drawImage(glow, sx - r, sy - 14 * s - r * 0.7, r * 2, r * 1.4);
+      } else if (b.type === 'landing_module') {
+        const r = 40 * s;
+        ctx.globalAlpha = 0.5 * k;
+        ctx.drawImage(glow, sx - r, sy - 30 * s - r, r * 2, r * 2);
+      }
+    }
     ctx.restore();
   }
 

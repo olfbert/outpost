@@ -10,6 +10,7 @@
 import { T, O } from './terrain.js';
 
 const SOFT_GROUND = [T.GRASS, T.MEADOW, T.FOREST, T.CONIFER, T.SAND, T.GRAVEL];
+const DECO_GROUND = [T.GRASS, T.MEADOW, T.FOREST, T.CONIFER, T.SAND, T.GRAVEL, T.HILLS !== undefined ? T.HILLS : T.GRASS];
 const MINE_GROUND = [...SOFT_GROUND, T.ROCK];
 
 function extractor(id, name, description, deposit, good, rate, cost, upkeep, unlock, art, workers = 3) {
@@ -225,6 +226,33 @@ export const BUILDINGS = {
     upkeep: 60, workers: 2,
     art: { kind: 'box', wallH: 13, gable: 0, wall: '#b9b29a', roof: '#6d6a62', siding: 0, door: true, windows: true },
   },
+  wood_house: {
+    id: 'wood_house', name: 'Holzhaus', category: 'residential',
+    description: 'Gemütliches Blockhaus für 3 Bewohner. Braucht vor allem Bretter, kaum Stein.',
+    footprint: { width: 1, height: 1 },
+    buildCost: { money: 1600, planks: 30 },
+    requirements: { terrain: SOFT_GROUND, maxSlope: 0.06, roadAccess: true },
+    upkeep: 10, residents: 3,
+    art: { kind: 'box', wallH: 11, gable: 10, wall: '#6b4a30', roof: '#3f5a3a', siding: 3, door: true, chimney: true },
+  },
+  brick_house: {
+    id: 'brick_house', name: 'Backsteinhaus', category: 'residential',
+    description: 'Solides zweistöckiges Haus für 6 Bewohner. Füllt sich über 4 Bewohner erst mit zwei Nahrungssorten.',
+    footprint: { width: 1, height: 1 },
+    buildCost: { money: 4200, planks: 20, stone: 40 },
+    requirements: { terrain: SOFT_GROUND, maxSlope: 0.05, roadAccess: true },
+    upkeep: 20, residents: 6, needsVariety: { min: 2, below: 4 },
+    art: { kind: 'box', wallH: 20, gable: 8, wall: '#9a4a36', roof: '#4d4d50', siding: 0, door: true, windows: true },
+  },
+  row_house: {
+    id: 'row_house', name: 'Reihenhäuser', category: 'residential',
+    description: 'Drei Reihenhäuser für zusammen 10 Bewohner. Über 6 Bewohner erst mit zwei Nahrungssorten.',
+    footprint: { width: 2, height: 2 },
+    buildCost: { money: 7000, planks: 40, stone: 50 },
+    requirements: { terrain: SOFT_GROUND, maxSlope: 0.05, roadAccess: true },
+    upkeep: 35, residents: 10, needsVariety: { min: 2, below: 6 },
+    art: { kind: 'box', wallH: 18, gable: 10, wall: '#d6c58e', roof: '#7a4c34', siding: 0, door: true, windows: true },
+  },
   apartment: {
     id: 'apartment', name: 'Wohnblock', category: 'residential',
     description: 'Mehrfamilienhaus aus Beton für 12 Bewohner. Füllt sich über 4 Bewohner nur mit drei Nahrungssorten.',
@@ -235,6 +263,21 @@ export const BUILDINGS = {
     unlock: ['concrete_plant', 'glassworks'],
     art: { kind: 'box', wallH: 26, gable: 0, wall: '#b7b3a8', roof: '#6b6a66', siding: 6, door: true, windows: true },
   },
+  // --- Deko -------------------------------------------------------------------------
+  lamp: { id: 'lamp', name: 'Straßenlaterne', category: 'deco', description: 'Leuchtet abends und nachts. Verschönert die Umgebung.',
+    footprint: { width: 1, height: 1 }, buildCost: { money: 120 }, requirements: { terrain: DECO_GROUND, maxSlope: 0.12 }, upkeep: 2, instant: true, beauty: 1, art: { kind: 'prop', prop: 'lamp' } },
+  bench: { id: 'bench', name: 'Parkbank', category: 'deco', description: 'Ein Platz zum Ausruhen. Verschönert die Umgebung.',
+    footprint: { width: 1, height: 1 }, buildCost: { money: 80 }, requirements: { terrain: DECO_GROUND, maxSlope: 0.12 }, upkeep: 0, instant: true, beauty: 1, art: { kind: 'prop', prop: 'bench' } },
+  bin: { id: 'bin', name: 'Mülleimer', category: 'deco', description: 'Hält die Wege sauber. Verschönert die Umgebung.',
+    footprint: { width: 1, height: 1 }, buildCost: { money: 40 }, requirements: { terrain: DECO_GROUND, maxSlope: 0.12 }, upkeep: 0, instant: true, beauty: 1, art: { kind: 'prop', prop: 'bin' } },
+  flowers: { id: 'flowers', name: 'Blumenbeet', category: 'deco', description: 'Bunte Blumen. Verschönert die Umgebung deutlich.',
+    footprint: { width: 1, height: 1 }, buildCost: { money: 150 }, requirements: { terrain: DECO_GROUND, maxSlope: 0.12 }, upkeep: 1, instant: true, beauty: 2, art: { kind: 'prop', prop: 'flowers' } },
+  plant_tree: { id: 'plant_tree', name: 'Laubbaum pflanzen', category: 'deco', description: 'Ein Zierbaum für Straßen und Plätze (wird nicht gefällt).',
+    footprint: { width: 1, height: 1 }, buildCost: { money: 60 }, requirements: { terrain: DECO_GROUND, maxSlope: 0.15 }, upkeep: 0, instant: true, beauty: 2, art: { kind: 'prop', prop: 'tree' } },
+  plant_conifer: { id: 'plant_conifer', name: 'Nadelbaum pflanzen', category: 'deco', description: 'Ein Zierbaum für Straßen und Plätze (wird nicht gefällt).',
+    footprint: { width: 1, height: 1 }, buildCost: { money: 60 }, requirements: { terrain: DECO_GROUND, maxSlope: 0.15 }, upkeep: 0, instant: true, beauty: 2, art: { kind: 'prop', prop: 'conifer' } },
+  fountain: { id: 'fountain', name: 'Brunnen', category: 'deco', description: 'Ein Zierbrunnen als Mittelpunkt des Ortes. Verschönert die Umgebung stark.',
+    footprint: { width: 1, height: 1 }, buildCost: { money: 1500, stone: 20 }, requirements: { terrain: DECO_GROUND, maxSlope: 0.06 }, upkeep: 10, instant: true, beauty: 4, art: { kind: 'prop', prop: 'fountain' } },
   haulage: {
     id: 'haulage', name: 'Spedition', category: 'logistics',
     description: 'Fuhrhof mit zwei Lkw. Weitere Lkw lassen sich hier kaufen (bis zu 8). Mehr Lkw bringen Waren schneller ans Ziel.',
@@ -254,6 +297,16 @@ export const BUILDINGS = {
     provides: { bulkStorage: 2000 },
     upkeep: 40,
     art: { kind: 'box', wallH: 26, gable: 0, wall: '#9aa3a6', roof: '#7d878a', siding: 4, silo: true },
+  },
+  drone_port: {
+    id: 'drone_port', name: 'Drohnenflugplatz', category: 'logistics',
+    description: 'Vier Lastdrohnen fliegen Waren im Umkreis von 40 Feldern direkt ans Ziel – über Wasser und ohne Wege. Kleine Ladung, aber schnell.',
+    footprint: { width: 2, height: 2 },
+    buildCost: { money: 12000, planks: 30, stone: 40, steel: 15 },
+    requirements: { terrain: SOFT_GROUND, maxSlope: 0.04, roadAccess: true },
+    provides: { drones: 4 },
+    upkeep: 250, workers: 3, unlock: ['haulage'],
+    art: { kind: 'box', wallH: 10, gable: 0, wall: '#8d949a', roof: '#5f666b', siding: 2, gate: true },
   },
   trade_office: {
     id: 'trade_office', name: 'Handelskontor', category: 'logistics',
@@ -277,9 +330,10 @@ export const BUILDINGS = {
 };
 
 export const BUILD_MENU = [
-  'landing_module', 'shelter', 'house_small', 'apartment',
+  'landing_module', 'shelter', 'wood_house', 'house_small', 'brick_house', 'row_house', 'apartment',
   'fisher_hut', 'food_store', 'farm', 'ranch', 'mill', 'bakery', 'butcher', 'greenhouse',
-  'warehouse', 'silo', 'haulage', 'trade_office', 'depot',
+  'warehouse', 'silo', 'haulage', 'drone_port', 'trade_office', 'depot',
+  'lamp', 'bench', 'bin', 'flowers', 'plant_tree', 'plant_conifer', 'fountain',
   'lumber_camp', 'sawmill', 'quarry',
   'clay_pit', 'sand_pit', 'lime_quarry', 'iron_mine', 'coal_mine',
   'smelter', 'cement_works', 'concrete_plant', 'glassworks',
@@ -292,6 +346,7 @@ export const MENU_TABS = [
   { id: 'resources', name: 'Rohstoffe', cats: ['resources'] },
   { id: 'industry', name: 'Industrie', cats: ['industry'] },
   { id: 'logistics', name: 'Logistik', cats: ['logistics'] },
+  { id: 'deco', name: 'Deko', cats: ['deco'] },
   { id: 'roads', name: 'Wege' },
 ];
 
@@ -314,4 +369,5 @@ export const CATEGORY_NAMES = {
   resources: 'Rohstoffe',
   food: 'Versorgung',
   logistics: 'Logistik',
+  deco: 'Deko',
 };

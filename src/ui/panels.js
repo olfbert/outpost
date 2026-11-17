@@ -7,7 +7,7 @@ import { ROADS } from '../config/roads.js';
 import { costText, fmt, GOODS } from '../config/economy.js';
 import { statusInfo, recipeText } from './status.js';
 import { siteStatusText } from '../simulation/construction.js';
-import { LEVEL_NAMES, popLimit } from '../simulation/population.js';
+import { LEVEL_NAMES, popLimit, beautyOf } from '../simulation/population.js';
 import { yearlyYield, PHASE_NAMES, fieldPhase } from '../simulation/farming.js';
 import { inTarget, outCap, storeCap } from '../simulation/inventory.js';
 import { TRUCK } from '../simulation/logistics.js';
@@ -97,7 +97,8 @@ export class InfoPanel {
       const lvl = b.level ?? 1;
       const lim = popLimit(b, this.ctx?.variety ?? 0);
       const rows = [['Bewohner', `${Math.floor(b.pop || 0)} von ${def.residents}${lim < def.residents ? ` (mehr erst mit ${def.needsVariety.min} Nahrungssorten)` : ''}`],
-        ['Versorgung', b._sup === false ? 'Kein Laden in Reichweite' : LEVEL_NAMES[lvl]]];
+        ['Versorgung', b._sup === false ? 'Kein Laden in Reichweite' : LEVEL_NAMES[lvl]],
+        ['Umgebung', this.ctx && this.ctx.state ? (() => { const v = beautyOf(this.ctx.state, b); return v > 0 ? `verschönert (+${Math.round(v * 100)} % Steuern)` : 'schlicht – Deko in der Nähe bringt mehr Steuern'; })() : '–']];
       if (def.upkeep) rows.push(['Betriebskosten', `${fmt(def.upkeep)} Cr / Monat`]);
       html += `<p><span class="status-dot ${lvl >= 2 ? 'st-running' : lvl === 1 ? 'st-paused' : 'st-warn'}"></span>${esc(b._sup === false ? 'Unversorgt – Lebensmittelladen bauen' : LEVEL_NAMES[lvl])}</p>${this._rows(rows)}`;
     }
@@ -203,6 +204,7 @@ export class MenuDialog {
     $('opt-debug').addEventListener('change', (e) => this.api.setOption('debug', e.target.checked));
     $('opt-tilt').addEventListener('change', (e) => this.api.setOption('tilt', e.target.checked));
     $('opt-clouds').addEventListener('change', (e) => this.api.setOption('clouds', e.target.checked));
+    $('opt-daynight').addEventListener('change', (e) => this.api.setOption('daynight', e.target.value));
     $('opt-cheats').addEventListener('change', (e) => this.api.setCheats && this.api.setCheats(e.target.checked));
     this.dlg.addEventListener('click', (e) => { if (e.target === this.dlg) this.dlg.close(); });
   }
@@ -220,8 +222,9 @@ export class MenuDialog {
     $('opt-debug').checked = info.settings.debug;
     $('opt-tilt').checked = info.settings.tilt !== false;
     $('opt-cheats').checked = !!(info.settings.cheats && info.settings.cheats.on);
+    $('opt-daynight').value = info.settings.daynight || 'auto';
     $('opt-clouds').checked = info.settings.clouds !== false;
-    $('menu-version').textContent = `Version ${GAME_VERSION} · Stufe B+D (Logistik, Brücken, Nachbarn, Handel)${info.settings.cheats && info.settings.cheats.used ? ' · Spielstand mit Cheats' : ''}` + (info.storage ? '' : ' · Speichern in dieser Ansicht nicht verfügbar');
+    $('menu-version').textContent = `Version ${GAME_VERSION} · Stufe B+D + Leben (Logistik, Nachbarn, Handel, Drohnen, Deko)${info.settings.cheats && info.settings.cheats.used ? ' · Spielstand mit Cheats' : ''}` + (info.storage ? '' : ' · Speichern in dieser Ansicht nicht verfügbar');
     if (this.dlg.showModal) this.dlg.showModal(); else this.dlg.setAttribute('open', '');
   }
 }

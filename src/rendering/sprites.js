@@ -393,6 +393,61 @@ function paintSiteScaffold(w, h) {
   return { pix: p, ax: g.ox, ay: g.oy };
 }
 
+// Deko-Objekte (1 × 1 Feld): Laterne, Bank, Mülleimer, Blumenbeet, Baum, Nadelbaum, Brunnen
+function paintProp(def) {
+  const kind = def.art.prop;
+  const g = boxGeom(1, 1, kind === 'tree' || kind === 'conifer' ? 64 : 40, 8);
+  const p = new Pix(g.cw, g.ch);
+  const cx = g.ox, cy = g.oy + 16;
+  const dark = rgba('#2f3236'), mid = rgba('#4a4f55'), light = rgba('#6d737a');
+  if (kind === 'lamp') {
+    p.shadow(cx + 4, cy + 1, 4, 1.6, 70);
+    p.rect(cx - 1, cy - 1, 3, 2, mid);
+    p.rect(cx, cy - 30, 1, 30, dark); p.rect(cx + 1, cy - 30, 1, 30, mid);
+    p.rect(cx + 1, cy - 31, 6, 1, dark);
+    p.rect(cx + 5, cy - 30, 4, 2, dark);
+    p.rect(cx + 5, cy - 28, 4, 1, rgba('#f3dc8a')); p.rect(cx + 6, cy - 27, 2, 1, rgba('#fff2bf'));
+  } else if (kind === 'bench') {
+    p.shadow(cx + 2, cy + 2, 9, 3, 60);
+    const wood = rgba('#8a6440'), woodL = rgba('#a87d52'), woodD = rgba('#5e4329');
+    // Sitzfläche entlang der x-Achse (nach rechts unten)
+    for (let i = -7; i <= 7; i++) { const x = cx + i, y = cy + Math.round(i / 2); p.set(x, y - 4, woodL); p.set(x, y - 3, wood); p.set(x, y - 7, wood); p.set(x, y - 8, woodL); }
+    for (const i of [-6, 6]) { const x = cx + i, y = cy + Math.round(i / 2); p.rect(x, y - 3, 1, 3, woodD); p.rect(x, y - 8, 1, 5, woodD); }
+  } else if (kind === 'bin') {
+    p.shadow(cx + 2, cy + 1, 4, 1.6, 60);
+    const g1 = rgba('#3f6a4a'), g2 = rgba('#2f5038'), g3 = rgba('#5b8a62');
+    for (let y = -8; y <= 0; y++) for (let x = -3; x <= 3; x++) p.set(cx + x, cy + y, x < -1 ? g3 : x > 1 ? g2 : g1);
+    p.rect(cx - 4, cy - 9, 9, 1, dark); p.rect(cx - 3, cy - 10, 7, 1, mid);
+  } else if (kind === 'flowers') {
+    const soil = rgba('#5c4632'), soilD = rgba('#4a3828');
+    const T0 = [cx, cy - 11], R = [cx + 22, cy], F = [cx, cy + 11], L = [cx - 22, cy];
+    p.poly([T0, R, F, L], (x, y) => (hashI(x, y, 3) < 0.3 ? soilD : soil));
+    p.line(L[0], L[1], F[0], F[1], rgba('#8a8478')); p.line(F[0], F[1], R[0], R[1], rgba('#77716a'));
+    const cols = ['#c8433a', '#e2c24a', '#ece6da', '#8a5cb0', '#d7739a'].map((h) => rgba(h)), leaf = rgba('#4f7a36');
+    for (let k = 0; k < 46; k++) {
+      const u = hashI(k, 1, 91) * 2 - 1, v = hashI(k, 2, 92) * 2 - 1;
+      if (Math.abs(u) + Math.abs(v) > 0.85) continue;
+      const x = Math.round(cx + u * 19), y = Math.round(cy + v * 9);
+      p.set(x, y, leaf); p.set(x, y - 1, cols[k % cols.length]);
+    }
+  } else if (kind === 'tree') {
+    paintTree(p, cx, cy, 401, ['#3f6a2e', '#4d7a34', '#5b8a3c', '#6c9a46', '#7fab52'].map((h) => rgba(h)), 0.95);
+  } else if (kind === 'conifer') {
+    paintConifer(p, cx, cy, 402, 0.85);
+  } else if (kind === 'fountain') {
+    p.shadow(cx + 3, cy + 2, 16, 6, 50);
+    const stone = rgba('#9a958a'), stoneD = rgba('#77736a'), water = rgba('#5d97ad'), waterL = rgba('#8cc0cf');
+    for (let y = -9; y <= 9; y++) for (let x = -18; x <= 18; x++) {
+      const d = (x / 18) ** 2 + (y / 9) ** 2;
+      if (d > 1) continue;
+      p.set(cx + x, cy + y - 2, d > 0.7 ? (y > 0 ? stoneD : stone) : (hashI(x, y, 5) < 0.15 ? waterL : water));
+    }
+    p.rect(cx - 1, cy - 12, 3, 9, stone); p.rect(cx - 2, cy - 13, 5, 1, stoneD);
+    for (let k = 0; k < 6; k++) p.set(cx - 3 + k, cy - 15 + Math.abs(k - 2.5), waterL);
+  }
+  return { pix: p, ax: g.ox, ay: g.oy };
+}
+
 function paintLander(def) {
   const w = def.footprint.width, h = def.footprint.height;
   const g = boxGeom(w, h, 84, 8);
@@ -542,7 +597,7 @@ export function buildSprites() {
   addObj(O.SAPLING_C, 'tree_sapling_conifer_02', sprSapling(283, true));
   const building = {};
   for (const def of Object.values(BUILDINGS)) {
-    building[def.id] = add(def.id, def.art.kind === 'lander' ? paintLander(def) : paintBox(def));
+    building[def.id] = add(def.id, def.art.kind === 'lander' ? paintLander(def) : def.art.kind === 'prop' ? paintProp(def) : paintBox(def));
   }
 
   for (const [w, h] of [[1, 1], [2, 2]]) {
@@ -555,7 +610,7 @@ export function buildSprites() {
   const L = lifeSpriteDefs();
   for (const d of L.defs) defs.push(d);
   const shift = (a) => (Array.isArray(a) ? a.map(shift) : a + lifeBase);
-  const life = { people: shift(L.people), grazers: shift(L.grazers), chickens: shift(L.chickens), trucks: shift(L.trucks), cars: shift(L.cars) };
+  const life = { people: shift(L.people), grazers: shift(L.grazers), chickens: shift(L.chickens), trucks: shift(L.trucks), cars: shift(L.cars), drones: shift(L.drones) };
 
   // Regalpackung; alle Positionen auf Vielfache von 4, damit die Mips exakt passen.
   const AW = 1024, PAD = 4;

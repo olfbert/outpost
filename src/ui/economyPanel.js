@@ -126,8 +126,9 @@ export class EconomyPanel {
         Warten auf Abholung: ${fmt(ls.waitingPickup || 0)} · Warten auf Lieferung: ${fmt(ls.waitingSupply || 0)}</div>
         <div class="bar"><span style="width:${Math.min(100, util)}%;background:${util > 85 ? 'var(--bad)' : 'var(--ok)'}"></span></div>
         <p class="muted">${esc(tip)}</p>
+        ${ls.drones ? `<div class="eco-food"><b>${fmt(ls.drones)} Drohnen</b> · Auslastung ${Math.round((ls.droneUtil || 0) * 100)} %<br><span class="muted">Fliegen kleine Mengen im Umkreis von 40 Feldern um den Flugplatz direkt ans Ziel.</span></div>` : ''}
         <p class="muted">Häufigste Fahrten zuletzt:</p>
-        ${routes.map((r) => `<div class="eco-row"><div><div class="name">${esc(name(r.from))} → ${esc(name(r.to))}</div><div class="sub">${esc(GOODS[r.good]?.name || '')}</div></div></div>`).join('') || '<p class="muted">Noch keine Fahrten.</p>'}`;
+        ${routes.map((r) => `<div class="eco-row"><div><div class="name">${esc(name(r.from))} → ${esc(name(r.to))}</div><div class="sub">${esc(GOODS[r.good]?.name || '')}${r.air ? ' · Drohne' : ''}</div></div></div>`).join('') || '<p class="muted">Noch keine Fahrten.</p>'}`;
     } else {
       const prod = st.buildings.filter((b) => BUILDINGS[b.type].production || BUILDINGS[b.type].farm);
       const rows = prod.map((b) => {

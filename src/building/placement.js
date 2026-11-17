@@ -128,7 +128,7 @@ export class Placement {
     const v = this.validate(type, x, y);
     if (!v.ok) return null;
     const st = this.state, def = BUILDINGS[type];
-    const instant = type === 'landing_module' || cheat(st, 'instant');
+    const instant = type === 'landing_module' || def.instant || cheat(st, 'instant');
     const free = cheat(st, 'free');
     if (!free) pay(st, type === 'landing_module' ? def.buildCost : { money: def.buildCost.money || 0 }, 1, `${def.name} ${type === 'landing_module' ? 'gelandet' : 'in Auftrag gegeben'}`);
     const b = { id: 'b' + st.nextId++, type, x, y, settlementId: st.settlements[0].id, builtAt: Date.now(), paid: free ? {} : { ...def.buildCost } };

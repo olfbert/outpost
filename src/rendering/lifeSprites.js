@@ -192,6 +192,23 @@ function car(color, dir) {
   return { pix, ax: 15, ay: 19 };
 }
 
+// Lastdrohne: vier Rotoren, Ladung darunter. Fliegend 22 px über dem eigenen Schatten.
+function drone(cargo, frame, flying) {
+  const p = new Pix(24, 36);
+  const ay = 32, lift = flying ? 22 : 2;
+  p.shadow(12, ay, flying ? 6 : 7, flying ? 2 : 2.4, flying ? 45 : 70);
+  const by = ay - lift;
+  const body = rgba('#3a3f44'), bodyL = rgba('#5b6168'), arm = rgba('#2a2d30'), rotor = rgba('#9aa3aa'), led = rgba('#d8443a');
+  if (cargo) { const c = rgba(CARGO[cargo]); p.rect(9, by - 2, 6, 4, c); p.rect(9, by - 2, 6, 1, shade(c, 1.15)); p.rect(14, by - 1, 1, 3, shade(c, 0.75)); }
+  p.rect(8, by - 6, 8, 3, body); p.rect(8, by - 6, 8, 1, bodyL);
+  p.line(4, by - 9, 20, by - 3, arm); p.line(20, by - 9, 4, by - 3, arm);
+  for (const [x, y] of [[4, by - 9], [20, by - 9], [4, by - 3], [20, by - 3]]) {
+    if (frame === 0) p.rect(x - 3, y, 7, 1, rotor); else { p.rect(x - 1, y - 1, 3, 1, rotor); p.rect(x - 2, y + 1, 5, 1, rotor); }
+  }
+  p.set(12, by - 5, led);
+  return { pix: p, ax: 12, ay };
+}
+
 // Liefert die Sprite-Definitionen für den Atlas und eine Nachschlagefunktion.
 export function lifeSpriteDefs() {
   const defs = [];
@@ -227,5 +244,10 @@ export function lifeSpriteDefs() {
     cars[ci] = [];
     for (let d = 0; d < 4; d++) { cars[ci][d] = defs.length; defs.push({ id: `car_${ci}_${d}`, ...car(col, d) }); }
   });
-  return { defs, people, grazers, chickens, trucks, cars };
+  const drones = [];   // drones[ladung][bild 0/1 fliegend, 2 gelandet]
+  CARGO.forEach((_, gi) => {
+    drones[gi] = [];
+    for (let f = 0; f < 3; f++) { drones[gi][f] = defs.length; defs.push({ id: `drone_${gi}_${f}`, ...drone(gi, f % 2, f < 2) }); }
+  });
+  return { defs, people, grazers, chickens, trucks, cars, drones };
 }

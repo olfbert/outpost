@@ -354,7 +354,7 @@ export class Life {
       }
     }
     for (const b of this.state.buildings) {
-      if (b.type !== 'house_small' || b.site) continue;
+      if (!['house_small', 'wood_house'].includes(b.type) || b.site) continue;
       for (let i = 0; i < 3; i++) {
         let x = b.x + 0.5, y = b.y + 1.4;
         for (let k = 0; k < 8; k++) {
@@ -560,6 +560,47 @@ export class Life {
     v.state = 'garage'; v.wait = 4 + rand2(v.i, Math.floor(this.time), 93) * 6;
   }
 
+  // --- Drohnen ----------------------------------------------------------------------
+  _syncDrones() {
+    const ports = this.state.buildings.filter((b) => !b.site && BUILDINGS[b.type]?.provides?.drones);
+    const want = Math.min(10, ports.reduce((n, b) => n + BUILDINGS[b.type].provides.drones, 0));
+    this.drones = this.drones || [];
+    while (this.drones.length > want) this.drones.pop();
+    while (this.drones.length < want) {
+      const i = this.drones.length, port = ports[i % ports.length];
+      const d = BUILDINGS[port.type].footprint;
+      const pad = { x: port.x + 0.5 + (i % 2) * (d.width - 1), y: port.y + 0.5 + ((i >> 1) % 2) * (d.height - 1) };
+      this.drones.push({ i, port: port.id, pad, x: pad.x, y: pad.y, state: 'landed', wait: 1 + i * 2.2, cargo: 0, leg: null, to: null, route: null });
+    }
+  }
+
+  _updateDrone(v, dt) {
+    if (v.state === 'fly') {
+      const dx = v.to.x - v.x, dy = v.to.y - v.y, d = Math.hypot(dx, dy), step = 2.4 * dt;
+      if (d <= step) {
+        v.x = v.to.x; v.y = v.to.y;
+        if (v.leg === 'pickup') { v.cargo = cargoIndex(v.route.good); v.state = 'hover'; v.wait = 1.2; v.leg = 'deliver'; }
+        else if (v.leg === 'deliver') { v.cargo = 0; v.state = 'hover'; v.wait = 1.2; v.leg = 'home'; }
+        else { v.state = 'landed'; v.wait = 3 + rand2(v.i, Math.floor(this.time), 97) * 5; v.leg = null; }
+      } else { v.x += (dx / d) * step; v.y += (dy / d) * step; }
+      return;
+    }
+    v.wait -= dt;
+    if (v.wait > 0) return;
+    if (v.state === 'hover') {
+      const nxt = v.leg === 'deliver' ? this._building(v.route.to) : null;
+      v.to = nxt ? this._center(nxt) : v.pad;
+      if (!nxt) v.leg = 'home';
+      v.state = 'fly';
+      return;
+    }
+    // gelandet: neuen Flug aus den Drohnen-Strecken der Disposition wählen
+    const rt = this.logistics && this.logistics.pickRoute(rand2(v.i, Math.floor(this.time * 3), 99), true);
+    const from = rt && this._building(rt.from);
+    if (!from) { v.wait = 3; return; }
+    v.route = rt; v.to = this._center(from); v.leg = 'pickup'; v.state = 'fly';
+  }
+
   _truckSpeed(v) {
     const t = this.state.roads.get(this.key(Math.floor(v.x), Math.floor(v.y))) || 1;
     return [0, 0.8, 1.1, 1.5][t] || 0.8;     // Felder je Sekunde (Darstellung)
@@ -571,6 +612,8 @@ export class Life {
     if (view) this._ensureHerds(view);
     this._syncTrucks();
     for (const v of this.trucks) this._updateTruck(v, dt);
+    this._syncDrones();
+    for (const v of this.drones) this._updateDrone(v, dt);
     for (const p of this.people) this._updatePerson(p, dt);
     for (const a of this.animals) this._updateAnimal(a, dt);
     // Tiere weit außerhalb wieder vergessen
@@ -610,6 +653,10 @@ export class Life {
     for (const v of this.trucks) {
       if (v.state === 'garage' || v.state === 'park') continue;
       push(v.x, v.y, L.trucks[v.cab][v.cargo][v.dir]);
+    }
+    for (const v of this.drones || []) {
+      const f = v.state === 'landed' ? 2 : (Math.floor(t * 12 + v.i) & 1);
+      push(v.x, v.y, L.drones[v.cargo][f]);
     }
     out.sort((a, b) => a.wy - b.wy);
     return out;

@@ -113,7 +113,7 @@ export function updatePopulation(state, step, res) {
     const n = Math.floor(h.pop);
     residents += n;
     fedPeople += n * h.fed;
-    taxBase += n * POP.taxFactor[lvl];
+    taxBase += n * POP.taxFactor[lvl] * (1 + (lvl > 0 ? beautyOf(state, h) : 0));
   }
   const fedAll = residents ? fedPeople / residents : 1;
   const efficiency = POP.hungryWork + (1 - POP.hungryWork) * Math.min(1, fedAll);
@@ -145,6 +145,20 @@ export function workFactor(state, b) {
   if (!need) return 1;
   const eff = state.pop ? state.pop.efficiency : 1;
   return ((b.staff ?? need) / need) * eff;
+}
+
+// Verschönerung: Deko im Umkreis von 5 Feldern bringt bis zu +30 % Steuern (zwischengespeichert je Bauzustand)
+export function beautyOf(state, h) {
+  if (h._beautyRev === state.rev) return h._beauty;
+  let pts = 0;
+  for (const b of state.buildings) {
+    const v = BUILDINGS[b.type]?.beauty;
+    if (!v || b.site) continue;
+    if (Math.abs(b.x - h.x) <= 5 && Math.abs(b.y - h.y) <= 5) pts += v;
+  }
+  h._beauty = Math.min(0.3, pts * 0.05);
+  h._beautyRev = state.rev;
+  return h._beauty;
 }
 
 export const LEVEL_NAMES = ['Hungrig', 'Satt', 'Zufrieden', 'Gut versorgt'];

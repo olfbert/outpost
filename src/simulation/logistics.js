@@ -27,6 +27,15 @@ export const TRUCK = {
 
 export const unitCost = (d) => (2 * d / TRUCK.speed + TRUCK.load) / TRUCK.capacity;
 
+// Lastdrohnen: fliegen Luftlinie (über Wasser, ohne Wege), kleine Ladung, nur im Umkreis eines Flugplatzes
+export const DRONE = { capacity: 4, speed: 7000, load: 0.0015, radius: 40 };
+export const droneCost = (d) => (2 * d / DRONE.speed + DRONE.load) / DRONE.capacity;
+export function droneCount(state) {
+  let n = 0;
+  for (const b of state.buildings) if (!b.site && !b.paused) n += BUILDINGS[b.type]?.provides?.drones || 0;
+  return n;
+}
+
 export function truckCount(state) {
   let n = 0;
   for (const b of state.buildings) {
@@ -60,11 +69,36 @@ export class Logistics {
     this._month = { used: 0, budget: 0, moved: 0 };
   }
 
-  _record(from, to, g, amount) {
-    const k = from.id + '>' + to.id;
+  _record(from, to, g, amount, air = false) {
+    const k = from.id + '>' + to.id + (air ? '~' : '');
     const r = this.routes.get(k);
     if (r) { r.w += amount; r.good = amount > r.last ? g : r.good; r.last = amount; }
-    else this.routes.set(k, { from: from.id, to: to.id, good: g, w: amount, last: amount });
+    else this.routes.set(k, { from: from.id, to: to.id, good: g, w: amount, last: amount, air });
+  }
+
+  // Liegt eine Strecke im Flugbereich (beide Enden im Umkreis desselben Flugplatzes)?
+  _air(a, b) {
+    if (!this.ports || !this.ports.length || this.usedD >= this.budgetD) return 0;
+    const ca = this.net.center(a), cb = this.net.center(b);
+    for (const p of this.ports) {
+      if (Math.hypot(ca.x - p.x, ca.y - p.y) <= DRONE.radius && Math.hypot(cb.x - p.x, cb.y - p.y) <= DRONE.radius) return Math.hypot(ca.x - cb.x, ca.y - cb.y) + 1;
+    }
+    return 0;
+  }
+
+  // Eine Fuhre durchführen: per Drohne, wenn möglich und günstiger als der Lkw, sonst per Lkw
+  _move(src, dst, d, want, limit) {
+    const da = this._air(src, dst);
+    if (da && droneCost(da) <= unitCost(d) * 1.5) {
+      const uc = droneCost(da);
+      const amount = Math.min(want, (this.budgetD - this.usedD) / uc);
+      if (amount > 1e-6) { this.usedD += amount * uc; return { amount, air: true }; }
+    }
+    if (this.used >= limit) return { amount: 0 };
+    const uc = unitCost(d);
+    const amount = Math.min(want, (limit - this.used) / uc);
+    if (amount > 1e-6) this.used += amount * uc;
+    return { amount: Math.max(0, amount), air: false };
   }
 
   // Bedarfsliste: { b, g, need, buf, prio }
@@ -121,24 +155,23 @@ export class Logistics {
 
   _fill(needs, limit) {
     for (const n of needs) {
-      if (this.used >= limit) return;
+      if (this.used >= limit && this.usedD >= this.budgetD) return;
       if (n.need <= 1e-6) continue;
       const src = this._sources(n.g, n.self || n.b);
       if (!src.length) continue;
       for (const s of src) s.d = this.net.dist(s.b, n.b);
       src.sort((a, c) => a.d - c.d);
       for (const s of src) {
-        if (n.need <= 1e-6 || this.used >= limit) break;
+        if (n.need <= 1e-6) break;
         const have = s.buf[n.g] || 0;
-        const uc = unitCost(s.d);
-        const amount = Math.min(n.need, have, (limit - this.used) / uc);
+        const mv = this._move(s.b, n.b, s.d, Math.min(n.need, have), limit);
+        const amount = mv.amount;
         if (amount <= 1e-6) continue;
         s.buf[n.g] = have - amount;
         n.buf[n.g] = (n.buf[n.g] || 0) + amount;
         n.need -= amount;
-        this.used += amount * uc;
         this.moved += amount;
-        this._record(s.b, n.b, n.g, amount);
+        this._record(s.b, n.b, n.g, amount, mv.air);
       }
     }
   }
@@ -151,20 +184,19 @@ export class Logistics {
     prod.sort((a, c) => Object.values(c.outBuf).reduce((x, v) => x + v, 0) - Object.values(a.outBuf).reduce((x, v) => x + v, 0));
     for (const b of prod) {
       for (const [g, v0] of Object.entries(b.outBuf)) {
-        if (v0 <= 1e-6 || this.used >= limit) continue;
+        if (v0 <= 1e-6 || (this.used >= limit && this.usedD >= this.budgetD)) continue;
         const dst = list.filter((s) => storeRoom(s, g) > 1e-6).map((s) => ({ s, d: this.net.dist(b, s) })).sort((a, c) => a.d - c.d);
         let v = v0;
         for (const { s, d } of dst) {
-          if (v <= 1e-6 || this.used >= limit) break;
-          const uc = unitCost(d);
-          const amount = Math.min(v, storeRoom(s, g), (limit - this.used) / uc);
+          if (v <= 1e-6) break;
+          const mv = this._move(b, s, d, Math.min(v, storeRoom(s, g)), limit);
+          const amount = mv.amount;
           if (amount <= 1e-6) continue;
           s.inv = s.inv || {};
           s.inv[g] = (s.inv[g] || 0) + amount;
           v -= amount;
-          this.used += amount * uc;
           this.moved += amount;
-          this._record(b, s, g, amount);
+          this._record(b, s, g, amount, mv.air);
         }
         b.outBuf[g] = v;
       }
@@ -175,8 +207,11 @@ export class Logistics {
     const st = this.state;
     const trucks = truckCount(st);
     const budget = trucks * step;
+    const drones = droneCount(st);
+    this.budgetD = drones * step; this.usedD = 0;
+    this.ports = st.buildings.filter((b) => !b.site && !b.paused && BUILDINGS[b.type]?.provides?.drones).map((b) => this.net.center(b));
     this.used = 0; this.moved = 0;
-    if (budget > 0) {
+    if (budget > 0 || this.budgetD > 0) {
       const needs = this._needs();
       this._fill(needs, budget * 0.7);
       this._clear(budget);
@@ -193,19 +228,19 @@ export class Logistics {
     for (const b of st.buildings) if (b.site && b.site.status.startsWith('material:')) ws++;
     const m = this._month;
     // Auslastung erst nach etwas Laufzeit melden (ca. 2 Stunden je Lkw), sonst schwankt sie beim Start stark
-    this.stats = { trucks, used: this.used, budget, util: m.budget >= Math.max(1, trucks) * 0.08 ? m.used / m.budget : 0, movedPerMonth: m.budget ? m.moved / (m.budget / Math.max(1, trucks)) : 0, waitingPickup: wp, waitingSupply: ws };
+    this.stats = { drones, droneUtil: this.budgetD ? this.usedD / this.budgetD : 0, trucks, used: this.used, budget, util: m.budget >= Math.max(1, trucks) * 0.08 ? m.used / m.budget : 0, movedPerMonth: m.budget ? m.moved / (m.budget / Math.max(1, trucks)) : 0, waitingPickup: wp, waitingSupply: ws };
     if (m.budget > Math.max(1, trucks) * 1) { m.used *= 0.5; m.budget *= 0.5; m.moved *= 0.5; }
     // Strecken langsam vergessen
     if (Math.random() < 0.05) for (const [k, r] of this.routes) { r.w *= 0.7; if (r.w < 0.5) this.routes.delete(k); }
   }
 
   // Eine Strecke für einen sichtbaren Lkw auswählen (gewichtet nach Menge)
-  pickRoute(rand) {
+  pickRoute(rand, air = false) {
     let total = 0;
-    for (const r of this.routes.values()) total += r.w;
+    for (const r of this.routes.values()) if (!!r.air === air) total += r.w;
     if (total <= 0) return null;
     let x = rand * total;
-    for (const r of this.routes.values()) { x -= r.w; if (x <= 0) return r; }
+    for (const r of this.routes.values()) { if (!!r.air !== air) continue; x -= r.w; if (x <= 0) return r; }
     return null;
   }
 }

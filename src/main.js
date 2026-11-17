@@ -189,7 +189,7 @@ function startWorld(st) {
 }
 
 // Nach einem Simulationsschritt: Welt und Anzeigen auffrischen
-function infoCtx() { return { gameMonths: state.gameMonths, variety: state.pop?.variety || 0 }; }
+function infoCtx() { return { gameMonths: state.gameMonths, variety: state.pop?.variety || 0, state }; }
 
 function cheatTick() {
   if (cheat(state, 'money') && state.money < 9_999_999) state.money = 9_999_999;
