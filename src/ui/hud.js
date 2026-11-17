@@ -4,6 +4,7 @@ import { zoomName } from '../config/gameConfig.js';
 import { GOODS, HUD_GOODS, FOOD_IDS, fmt } from '../config/economy.js';
 
 const $ = (id) => document.getElementById(id);
+const SHORT = { planks: 'Br', stone: 'St', logs: 'RH' };
 const MONTHS = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
 
 export class Hud {
@@ -30,9 +31,9 @@ export class Hud {
     const months = p && p.demand > 0 ? food / p.demand : Infinity;
     const foodWarn = p && p.residents && (months < 0.5 || p.hungry > 0);
     const html = `<span class="item money${vals.money < 0 ? ' neg' : ''}" data-k="money">${vals.money < 0 ? '−' : ''}${fmt(Math.abs(vals.money))} Cr</span>` +
-      HUD_GOODS.map((g) => `<span class="item" data-k="${g}">${fmt(vals[g])}<span>${GOODS[g].name}</span></span>`).join('') +
-      `<span class="item${foodWarn ? ' warn' : ''}" data-k="food" title="Nahrung im Lager">${fmt(food)}<span>Nahrung</span></span>` +
-      (p && p.residents ? `<span class="item${p.hungry ? ' warn' : ''}" title="Einwohner (Arbeitsplätze ${p.jobs})">${fmt(p.residents)}<span>Einwohner</span></span>` : '');
+      HUD_GOODS.map((g) => `<span class="item" data-k="${g}" title="${GOODS[g].name}">${fmt(vals[g])}<span class="l">${GOODS[g].name}</span><span class="s">${SHORT[g] || ''}</span></span>`).join('') +
+      `<span class="item${foodWarn ? ' warn' : ''}" data-k="food" title="Nahrung im Lager">${fmt(food)}<span class="l">Nahrung</span><span class="s">Nahr.</span></span>` +
+      (p && p.residents ? `<span class="item${p.hungry ? ' warn' : ''}" title="Einwohner (Arbeitsplätze ${p.jobs})">${fmt(p.residents)}<span class="l">Einwohner</span><span class="s">Ew.</span></span>` : '');
     this.stock.innerHTML = html;
     for (const [k, v] of Object.entries(vals)) {
       if (this._last[k] !== undefined && Math.floor(this._last[k]) !== Math.floor(v)) this.stock.querySelector(`[data-k="${k}"]`)?.classList.add('flash');
@@ -44,9 +45,16 @@ export class Hud {
 
   setDate(d) { this.date.textContent = typeof d === 'string' ? d : `${MONTHS[d.month - 1]} · Jahr ${d.year}`; }
 
+  // Zoomstufe nur kurz beim Wechsel einblenden
   setZoom(scale) {
     const t = zoomName(scale);
-    if (t !== this._zoomText) { this._zoomText = t; this.zoom.textContent = t; }
+    if (t === this._zoomText) return;
+    const first = !this._zoomText;
+    this._zoomText = t; this.zoom.textContent = t;
+    if (first) return;
+    this.zoom.classList.add('show');
+    clearTimeout(this._zoomTimer);
+    this._zoomTimer = setTimeout(() => this.zoom.classList.remove('show'), 1400);
   }
 
   setHint(text) {

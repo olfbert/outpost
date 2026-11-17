@@ -65,8 +65,15 @@
   </div>
 </div>
 
+<button class="icon-btn" id="btn-build" aria-label="Baumenü einblenden" title="Baumenü einblenden (B)" hidden>
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21l9-9M14 4l6 6-3 3-6-6zM11 7l6 6"/></svg><span>Bauen</span>
+</button>
+
 <div id="buildwrap">
-  <div id="buildtabs" role="tablist"></div>
+  <div id="buildhead">
+    <div id="buildtabs" role="tablist"></div>
+    <button id="build-hide" type="button" aria-label="Baumenü ausblenden" title="Baumenü ausblenden (B)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+  </div>
   <nav id="buildbar" aria-label="Bauen"></nav>
 </div>
 

@@ -572,6 +572,22 @@ const renameDialog = new RenameDialog((name) => {
   hud.toast(`Siedlung heißt jetzt „${name}“`);
 });
 $('title-btn').addEventListener('click', () => renameDialog.open(state.settlements[0].name));
+// Baumenü ein-/ausblenden (gemerkt im Browser)
+function setBuildHidden(on) {
+  document.body.classList.toggle('build-hidden', on);
+  $('btn-build').hidden = !on;
+  try { localStorage.setItem('outpost.buildHidden', on ? '1' : '0'); } catch (e) { /* privat */ }
+  if (on && placing) setTool(null);
+  setTimeout(resize, 0);
+}
+$('build-hide').addEventListener('click', () => setBuildHidden(true));
+$('btn-build').addEventListener('click', () => setBuildHidden(false));
+window.addEventListener('keydown', (e) => {
+  if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.metaKey || e.ctrlKey) return;
+  if (e.key === 'b' || e.key === 'B') setBuildHidden(!document.body.classList.contains('build-hidden'));
+});
+try { if (localStorage.getItem('outpost.buildHidden') === '1') setBuildHidden(true); } catch (e) { /* privat */ }
+
 $('title-btn').addEventListener('keydown', (e) => { if (e.key === 'Enter') renameDialog.open(state.settlements[0].name); });
 
 const infoPanel = new InfoPanel({
