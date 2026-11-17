@@ -323,7 +323,7 @@ function tryPlace() {
   const def = BUILDINGS[placing];
   const b = placement.place(placing, ghostPos.x, ghostPos.y);
   if (!b) return;
-  renderer.invalidateTiles(b.x, b.y, def.footprint.width, def.footprint.height);
+  renderer.invalidateTiles(b.x, b.y, def.footprint.width, def.footprint.height, def.category !== 'deco');
   if (b._fieldBox) { const f = b._fieldBox; renderer.invalidateTiles(f.x0, f.y0, f.x1 - f.x0 + 1, f.y1 - f.y0 + 1, true); }
   if (b.site) {
     const short = v.matShort && v.matShort.length ? ' · Material fehlt noch – die Baustelle wartet darauf' : '';
@@ -736,6 +736,27 @@ window.addEventListener('resize', resize);
 if (window.visualViewport) window.visualViewport.addEventListener('resize', resize);
 if (window.ResizeObserver) new ResizeObserver(() => resize()).observe(document.body);
 window.addEventListener('orientationchange', () => setTimeout(resize, 200));
+
+// iOS-Homescreen-App: Nach dem ersten Öffnen der Tastatur (z. B. Siedlung benennen) bleibt die
+// Ansicht um die Höhe der Statusleiste zu kurz – unten erscheint ein leerer Streifen.
+// Abhilfe: nach dem Schließen der Tastatur das Layout neu vermessen lassen.
+let maxViewH = window.innerHeight;
+window.addEventListener('resize', () => { maxViewH = Math.max(maxViewH, window.innerHeight); });
+function healViewport() {
+  if (maxViewH - window.innerHeight <= 4) return;
+  const el = document.body;
+  el.style.display = 'none';
+  void el.offsetHeight;
+  el.style.display = '';
+  window.scrollTo(0, 0);
+  resize();
+}
+document.addEventListener('focusout', (e) => {
+  if (!e.target || !/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+  setTimeout(healViewport, 140);
+  setTimeout(healViewport, 600);
+});
+document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(healViewport, 300); });
 document.addEventListener('visibilitychange', () => { if (document.hidden) saveNow(); else dirty = true; });
 window.addEventListener('pagehide', saveNow);
 

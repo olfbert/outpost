@@ -1,0 +1,7 @@
+{
+  "_hinweis": "Sockelhöhe in Pixeln (Seitenflächen unter der Grundplatte). Anwenden: python3 -I tools/flatten_plinth.py – nach jedem asset_batch-Lauf erneut ausführen.",
+  "sawmill": 2, "quarry": 3, "iron_mine": 2, "coal_mine": 2, "lime_quarry": 2, "clay_pit": 4,
+  "sand_pit": 2, "smelter": 2, "cement_works": 2, "concrete_plant": 3, "farm": 2, "ranch": 3,
+  "mill": 2, "greenhouse": 2, "glassworks": 2, "depot": 2, "silo": 2, "trade_office": 2,
+  "wood_house": 2, "brick_house": 1, "row_house": 2, "drone_port": 8, "warehouse": 1, "haulage": 3
+}

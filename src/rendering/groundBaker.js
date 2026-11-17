@@ -5,6 +5,7 @@
 import { TERRAIN_RAMPS, TERRAIN_COUNT, COLORS, T, DEPOSIT_GROUND } from '../config/terrain.js';
 import { rgba, hashI } from './pix.js';
 import { ROADS } from '../config/roads.js';
+import { BUILDINGS } from '../config/buildings.js';
 
 export const RAMP = new Uint32Array(TERRAIN_COUNT * 5);
 TERRAIN_RAMPS.forEach((r, t) => r.forEach((h, i) => { RAMP[t * 5 + i] = rgba(h); }));
@@ -25,6 +26,24 @@ const FIELD = [
   [['#cfd6d9', '#e2e7e9'], ['#cfd6d9', '#e2e7e9']],          // Schnee
 ].map((ph) => ph.map((c) => c.map((h) => rgba(h))));
 const PASTURE = rgba('#6d8f47');
+// Ausgetretener Boden rund um Gebäude, damit die Grundplatten nicht wie aufgeklebt wirken
+const YARD = [rgba('#7a6849'), rgba('#887657'), rgba('#6f6a48')];
+const YARD_R = 0.7;
+
+// Grundflächen der Gebäude, die diese Kachel berühren (Feldraster)
+function yardRects(state, minX, maxX, minY, maxY) {
+  const out = [];
+  const add = (b) => {
+    const def = BUILDINGS[b.type];
+    if (!def || def.category === 'deco') return;
+    const w = def.footprint.width, h = def.footprint.height;
+    if (b.x - YARD_R > maxX || b.x + w + YARD_R < minX || b.y - YARD_R > maxY || b.y + h + YARD_R < minY) return;
+    out.push(b.x, b.y, b.x + w, b.y + h);
+  };
+  for (const b of state.buildings || []) add(b);
+  for (const b of state.npcBuildings || []) add(b);
+  return out;
+}
 
 function mixCol(a, b, k) {
   const r = (a & 255) + ((b & 255) - (a & 255)) * k;
@@ -138,6 +157,7 @@ export function bakeGround(store, wx0, wy0, size, res, img) {
   const anyRoad = store.state.roads.size > 0;
   const gm = store.state.gameMonths || 0, mi = Math.floor(gm) % 12;
   const winter = mi === 11 || mi <= 1;
+  const yards = yardRects(store.state, minX, maxX, minY, maxY), ny = yards.length;
 
   for (let py = 0; py < size; py++) {
     const wy = wy0 + (py + 0.5) * inv;
@@ -223,6 +243,22 @@ export function bakeGround(store, wx0, wy0, size, res, img) {
             const k = cov > 0.5 ? 0.62 : 0.4;
             col = mixCol(col, dc, k);
           }
+        }
+      }
+      // Hof: weicher Übergang aus festgetretener Erde rund um Gebäude
+      if (ny && t > RIVER) {
+        let dmin = YARD_R;
+        for (let k = 0; k < ny; k += 4) {
+          const dx = jfx < yards[k] ? yards[k] - jfx : jfx > yards[k + 2] ? jfx - yards[k + 2] : 0;
+          const dy = jfy < yards[k + 1] ? yards[k + 1] - jfy : jfy > yards[k + 3] ? jfy - yards[k + 3] : 0;
+          if (dx >= dmin || dy >= dmin) continue;
+          const d = Math.sqrt(dx * dx + dy * dy);
+          if (d < dmin) dmin = d;
+        }
+        if (dmin < YARD_R) {
+          const f = 1 - dmin / YARD_R;
+          const k = f * 0.95 + (n - 128) * 0.002;
+          if (k > 0.12) col = mixCol(col, YARD[n < 90 ? 0 : n < 200 ? 1 : 2], k > 0.8 ? 0.8 : k);
         }
       }
       // Winter: Schnee auf dem Land (Wasser bleibt offen)

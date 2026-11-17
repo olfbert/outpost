@@ -48,6 +48,17 @@
       "shadow": 0.2,
       "open": 3,
       "erode": 2
+    },
+    {
+      "job": "flo_haulage_v2",
+      "sprite": "haulage",
+      "out": "assets/buildings/logistics/haulage_02.png",
+      "width": 130,
+      "footprint": "2x2",
+      "hue": "285,345",
+      "tone": "0.9,0.95",
+      "shadow": 0.25,
+      "erode": 2
     }
   ]
 }
