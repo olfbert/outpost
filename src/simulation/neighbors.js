@@ -8,6 +8,7 @@
 // - Lieferung: ohne Wegverbindung nur per Luftfracht (teuer), mit Straße zur Handelsstation günstig.
 
 import { GOODS } from '../config/economy.js';
+import { BUILDINGS } from '../config/buildings.js';
 import { T, isWater } from '../config/terrain.js';
 import { rand2 } from '../world/noise.js';
 
@@ -233,12 +234,16 @@ export function layoutNeighbor(world, store, site, size, blocked = () => false) 
   for (let i = 0; i < nHouses; i++) {
     const r = rand2(site.x + i, site.y, 640);
     let type = 'house_small';
-    if (size >= 320 && i % 6 === 5) type = 'apartment';
-    else if (size >= 200 && i % 5 === 3) type = 'row_house';
+    if (size >= 600 && i % 9 === 8) type = 'highrise';
+    else if (size >= 320 && i % 7 === 6) type = 'apartment';
+    else if (size >= 420 && i % 11 === 5) type = 'villa';
+    else if (size >= 200 && i % 5 === 3) type = r < 0.5 ? 'row_house' : 'duplex';
+    else if (size >= 160 && site.profile !== 'farm' && i % 8 === 2) type = 'dormitory';
+    else if (size < 120 && r < 0.3) type = 'container_home';
     else if (size >= 100 && r < 0.4) type = 'brick_house';
     else if (r < 0.7) type = 'wood_house';
-    const big = type === 'apartment' || type === 'row_house';
-    wanted.push({ type, w: big ? 2 : 1, h: big ? 2 : 1 });
+    const fp = BUILDINGS[type].footprint;
+    wanted.push({ type, w: fp.width, h: fp.height });
   }
   // Bauplätze entlang der Straßen (beidseitig), vom Zentrum nach außen
   const slots = [];

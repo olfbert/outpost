@@ -53,6 +53,7 @@ export function serialize(state) {
     history: state.history.slice(-50),
     gameMonths: state.gameMonths,
     taxAcc: state.taxAcc || 0,
+    market: state.market || {},
     neighbors: state.neighbors || [],
     ledger: state.ledger,
     settlements: state.settlements,
@@ -100,6 +101,7 @@ export function deserialize(data, cfg) {
   s.neighbors = Array.isArray(data.neighbors) ? data.neighbors.filter((n) => n && n.id && n.stock) : [];
   if (Array.isArray(data.ledger)) s.ledger = data.ledger.slice(-24);
   s.cleared = new Set(Array.isArray(data.cleared) ? data.cleared : []);
+  s.market = data.market && typeof data.market === 'object' ? Object.fromEntries(Object.entries(data.market).filter(([, v]) => Number.isFinite(v) && v > 0)) : {};
   s.planted = new Map(Array.isArray(data.planted) ? data.planted.filter((e) => Array.isArray(e) && Number.isInteger(e[0]) && Number.isFinite(e[1])) : []);
   s.felled = new Map(Array.isArray(data.felled) ? data.felled.filter((e) => Array.isArray(e) && Number.isFinite(e[1])) : []);
   s.camera = data.camera || null;

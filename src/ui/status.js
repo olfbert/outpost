@@ -6,10 +6,10 @@ export function statusInfo(status) {
   const g = good ? GOODS[good]?.name : '';
   switch (kind) {
     case 'running': return { text: 'Läuft', cls: 'st-running' };
-    case 'input': return { text: `Wartet auf Lieferung: ${g}`, cls: 'st-warn' };
+    case 'input': return { text: `Wartet auf Lieferung: ${g}${good === 'grain' ? ' – stelle einen Ackerhof auf Getreide um' : good === 'flour' ? ' – baue eine Mühle (Getreide)' : good === 'cattle' ? ' – baue einen Viehhof' : ''}`, cls: 'st-warn' };
     case 'full': return { text: `Wartet auf Abholung: ${g} (Lkw oder Lagerplatz fehlen)`, cls: 'st-warn' };
     case 'exhausted': return { text: 'Vorkommen erschöpft', cls: 'st-stop' };
-    case 'notrees': return { text: 'Kein Wald mehr in Reichweite', cls: 'st-stop' };
+    case 'notrees': return { text: 'Kein Wald mehr im Fällgebiet – Pflanzgebiet festlegen oder Fällgebiet verschieben', cls: 'st-stop' };
     case 'paused': return { text: 'Pausiert', cls: 'st-paused' };
     case 'site': return { text: 'Im Bau', cls: 'st-paused' };
     case 'staff': return { text: 'Zu wenig Arbeiter', cls: 'st-warn' };

@@ -327,10 +327,12 @@ export class Renderer {
     ctx.imageSmoothingEnabled = s < 1;
     if (lvl === 0) {
       if (!this._drawSorted(view, s, ox, oy, life)) pending = true;
+      if (life) this._drawSmoke(view, life.time || 0);
     } else {
       this._drawBuildingsFlat(lvl, cam, s);
     }
     this._drawClouds(cam, view);
+    if (life && lvl <= 1) this._drawBirds(view, life.time || 0, s);
     this._drawNight(cam, view, s, ox, oy);
     this._drawOverlay(cam, overlay, s, ox, oy, lvl);
 
@@ -472,6 +474,77 @@ export class Renderer {
     if (h >= 18 && h < 20.5) return max * (h - 18) / 2.5;
     if (h >= 5 && h < 7.5) return max * (7.5 - h) / 2.5;
     return max;
+  }
+
+  // Oberste Silhouetten-Spitze eines Gebäudebilds (Schornstein) – einmal je Bild ermittelt
+  _chimney(sp) {
+    if (sp._top !== undefined) return sp._top;
+    sp._top = null;
+    try {
+      const c = sp.src[0], g = c.getContext('2d', { willReadFrequently: true });
+      const d = g.getImageData(sp.x, sp.y, sp.w, sp.h).data;
+      outer: for (let y = 0; y < sp.h; y++) for (let x = 0; x < sp.w; x++) if (d[(y * sp.w + x) * 4 + 3] > 200) { sp._top = { x, y }; break outer; }
+    } catch (e) { sp._top = null; }
+    return sp._top;
+  }
+
+  // Rauch aus Schornsteinen: Industrie qualmt, wenn sie läuft; Wohnhäuser mit Kamin, wenn bewohnt
+  _drawSmoke(view, t) {
+    const ctx = this.ctx, sprites = this.sprites.list;
+    const all = this.state.npcBuildings && this.state.npcBuildings.length ? this.state.buildings.concat(this.state.npcBuildings) : this.state.buildings;
+    const winter = (() => { const m = Math.floor(this.state.gameMonths || 0) % 12; return m === 11 || m <= 1; })();
+    for (const b of all) {
+      const def = BUILDINGS[b.type];
+      const kind = def?.smoke;
+      if (!kind || b.site) continue;
+      if (!b.npc) {
+        if (kind === 'heavy' && b.status !== 'running') continue;
+        if (kind === 'light' && !(b.pop >= 1)) continue;
+      }
+      const bx = (b.x - b.y) * 32, by = (b.x + b.y) * 16;
+      if (bx < view.x0 - 80 || bx > view.x1 + 80 || by < view.y0 - 40 || by > view.y1 + 160) continue;
+      const sp = sprites[this.sprites.building[b.type]];
+      const top = sp && this._chimney(sp);
+      if (!top) continue;
+      const cx = bx - sp.ax + top.x + 0.5, cy = by - sp.ay + top.y;
+      const heavy = kind === 'heavy', n = heavy ? 7 : (winter ? 5 : 3);
+      const seed = (b.x * 13 + b.y * 7) % 100 / 100;
+      for (let k = 0; k < n; k++) {
+        const ph = (t * (heavy ? 0.22 : 0.16) + k / n + seed) % 1;
+        const r = (heavy ? 3 : 1.4) + ph * (heavy ? 7.5 : 3.5);
+        const x = cx + ph * (heavy ? 14 : 8) + Math.sin(t * 1.3 + k * 2 + seed * 6) * 1.5;
+        const y = cy - 2 - ph * (heavy ? 34 : 20);
+        const a = Math.min(1, ph * 10) * (1 - ph) * (heavy ? 0.8 : 0.55);
+        const c = heavy ? 90 + ph * 90 : 228;
+        ctx.fillStyle = `rgba(${c | 0}, ${c | 0}, ${(c + 4) | 0}, ${a.toFixed(3)})`;
+        ctx.beginPath(); ctx.arc(x, y, r, 0, 6.2832); ctx.fill();
+      }
+    }
+  }
+
+  // Vogelschwärme ziehen ab und zu über die Karte
+  _drawBirds(view, t, s) {
+    const ctx = this.ctx;
+    const period = 38, k = Math.floor(t / period), ph = (t % period) / period;
+    if (ph > 0.75) return;
+    const r = (n) => { const x = Math.sin(k * 12.9898 + n * 78.233) * 43758.5453; return x - Math.floor(x); };
+    const w = view.x1 - view.x0, h = view.y1 - view.y0;
+    const dirL = r(1) < 0.5;
+    const x0 = dirL ? view.x1 + 40 : view.x0 - 40, x1 = dirL ? view.x0 - 40 : view.x1 + 40;
+    const y0 = view.y0 + h * (0.15 + r(2) * 0.6), y1 = y0 + (r(3) - 0.5) * h * 0.4;
+    const p = ph / 0.75, cx = x0 + (x1 - x0) * p, cy = y0 + (y1 - y0) * p;
+    const count = 4 + Math.floor(r(4) * 5), size = Math.max(2.2, 1.6 / s);
+    ctx.strokeStyle = 'rgba(30, 32, 30, 0.75)';
+    ctx.lineWidth = Math.max(0.8, 0.9 / s);
+    for (let i = 0; i < count; i++) {
+      const fx = cx + (dirL ? 1 : -1) * (Math.abs(i - count / 2) * 9 + r(10 + i) * 6) * Math.max(1, 0.6 / s);
+      const fy = cy + (i - count / 2) * 5 * Math.max(1, 0.6 / s) + Math.sin(t * 2 + i) * 2;
+      const flap = Math.sin(t * 9 + i * 1.7) * 0.6 * size;
+      ctx.beginPath();
+      ctx.moveTo(fx - size, fy - flap); ctx.lineTo(fx, fy); ctx.lineTo(fx + size, fy - flap);
+      ctx.stroke();
+    }
+    void w;
   }
 
   _glow() {

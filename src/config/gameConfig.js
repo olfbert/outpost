@@ -1,6 +1,6 @@
 // Zentrale Spielkonfiguration. Alle Werte hier sind bewusst leicht anpassbar.
 
-export const GAME_VERSION = '0.12.0';
+export const GAME_VERSION = '0.13.0';
 export const SAVE_SCHEMA_VERSION = 7;
 
 export const CONFIG = {
@@ -37,7 +37,7 @@ export const CONFIG = {
   regrowTreeMonths: 12,    // nach 12 Monaten wieder ausgewachsen
 
   // --- Wirtschaft -----------------------------------------------------------
-  startBudget: 25000,     // Startgeld in Cr; Startmaterial in config/economy.js
+  startBudget: 30000,     // Startgeld in Cr; Startmaterial in config/economy.js
 };
 
 export const ZOOM_NAMES = [

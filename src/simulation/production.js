@@ -6,6 +6,7 @@ import { BUILDINGS } from '../config/buildings.js';
 import { GOOD_IDS } from '../config/economy.js';
 import { isTree, isDeposit, isWater, T } from '../config/terrain.js';
 import { advanceSites } from './construction.js';
+import { marketQuote, marketSold, marketRecover } from './market.js';
 import { updatePopulation, workFactor } from './population.js';
 import { recomputeStock, takeGoods, outCap } from './inventory.js';
 import { Logistics, truckUpkeep } from './logistics.js';
@@ -224,6 +225,7 @@ export class Production {
       for (const b of order) this._produce(b, step, cap, res);
       this.logistics.step(step, res);
       recomputeStock(st);
+      marketRecover(st, step);
       st.gameMonths += step;
       left -= step;
       if (st.gameMonths >= nextMonth - 1e-9) {
@@ -371,12 +373,13 @@ export function ledgerFor(state, month) {
   return led;
 }
 
-// Verkauf einer Ware zum festen Preis
+// Verkauf einer Ware an den Erdmarkt (Preis sinkt mit der verkauften Menge, siehe market.js)
 export function sell(state, good, amount, price, label) {
   amount = Math.floor(Math.min(amount, state.stock[good] || 0));
   if (amount <= 0) return 0;
   takeGoods(state, { [good]: amount });
-  const money = amount * price;
+  const money = marketQuote(state, good, amount);
+  marketSold(state, good, amount);
   state.money += money;
   ledgerFor(state, Math.floor(state.gameMonths)).income += money;
   state.history.push({ t: Date.now(), gm: state.gameMonths, text: `${amount} ${label} verkauft`, money });

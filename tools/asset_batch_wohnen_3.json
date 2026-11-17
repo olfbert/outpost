@@ -1,0 +1,10 @@
+{
+  "_hinweis": "Fünf neue Wohngebäude (v0.13.x). Verarbeitung: python3 -I tools/asset_batch.py tools/asset_batch_wohnen_3.json, danach tools/flatten_plinth.py und tools/reshadow.py",
+  "items": [
+    {"job": "3dcce51a", "sprite": "container_home", "out": "assets/buildings/residential/container_home_01.png", "width": 70, "footprint": "1x1", "hue": "285,345", "tone": "0.9,0.95", "shadow": 0.3, "grow": 5, "open": 3},
+    {"job": "8e9c2785", "sprite": "duplex", "out": "assets/buildings/residential/duplex_01.png", "width": 104, "footprint": "2x1", "hue": "285,345", "tone": "0.9,0.95", "shadow": 0.3, "grow": 5, "open": 3},
+    {"job": "2b568481", "sprite": "dormitory", "out": "assets/buildings/residential/dormitory_01.png", "width": 124, "footprint": "2x2", "hue": "285,345", "tone": "0.9,0.95", "shadow": 0.3, "grow": 5, "open": 3},
+    {"job": "1ff3e039", "sprite": "villa", "out": "assets/buildings/residential/villa_01.png", "width": 124, "footprint": "2x2", "hue": "285,345", "tone": "0.9,0.95", "shadow": 0.3, "grow": 5, "open": 3},
+    {"job": "e60b1131", "sprite": "highrise", "out": "assets/buildings/residential/highrise_01.png", "width": 112, "footprint": "2x2", "hue": "285,345", "tone": "0.9,0.95", "shadow": 0.3, "grow": 5, "open": 3}
+  ]
+}

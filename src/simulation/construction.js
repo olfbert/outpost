@@ -25,9 +25,21 @@ export function builderCapacity(state) {
   return n;
 }
 
-// Baustellen in Bau-Reihenfolge (ältere zuerst)
+// Baustellen in Bau-Reihenfolge: Grundbetriebe (Holzfäller, Sägewerk, Steinbruch) zuerst,
+// dann Baustellen, deren Material vorhanden ist, dann der Rest – jeweils ältere zuerst.
+// So blockieren wartende Häuser nie das Sägewerk, das die Bretter für sie liefern soll.
+function canProceed(state, b) {
+  const s = b.site;
+  for (const [g, v] of Object.entries(s.need)) {
+    const open = v - (s.used[g] || 0) - (s.have?.[g] || 0);
+    if (open > 1e-6 && (s.have?.[g] || 0) < 1e-6 && (state.stock[g] || 0) < 1) return false;
+  }
+  return true;
+}
 export function sites(state) {
-  return state.buildings.filter((b) => b.site).sort((a, b) => (a.builtAt || 0) - (b.builtAt || 0) || (a.id < b.id ? -1 : 1));
+  const rank = (b) => (BUILDINGS[b.type]?.basic ? 0 : canProceed(state, b) ? 1 : 2);
+  return state.buildings.filter((b) => b.site).map((b) => ({ b, r: rank(b) }))
+    .sort((p, q) => p.r - q.r || (p.b.builtAt || 0) - (q.b.builtAt || 0) || (p.b.id < q.b.id ? -1 : 1)).map((p) => p.b);
 }
 
 // Fortschritt für step Monate. Fertige Gebäude kommen in res.completed.

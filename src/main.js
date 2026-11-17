@@ -550,7 +550,7 @@ const economy = new EconomyPanel({
   },
   cfg: CONFIG,
   sell(good, n) {
-    const money = sell(state, good, n, GOODS[good].price, GOODS[good].name);
+    const money = sell(state, good, n, 0, GOODS[good].name);
     if (money) hud.toast(`${n} ${GOODS[good].name} verkauft · +${money.toLocaleString('de-DE')} Cr`);
     refreshState();
     saveNow();

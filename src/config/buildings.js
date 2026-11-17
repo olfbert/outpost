@@ -69,8 +69,9 @@ export const BUILDINGS = {
     id: 'lumber_camp', name: 'Holzfällerlager', category: 'resources',
     description: 'Fällt Bäume und liefert Rundholz. Fällgebiet und Pflanzgebiet lassen sich festlegen; im Pflanzgebiet setzen die Arbeiter junge Bäume, die nach einem Jahr gefällt werden können.',
     footprint: { width: 1, height: 1 },
-    buildCost: { money: 1250, planks: 12 },
-    requirements: { terrain: SOFT_GROUND, maxSlope: 0.05, roadAccess: true, nearTrees: { radius: 8, min: 20 } },
+    buildCost: { money: 1500 },
+    requirements: { terrain: SOFT_GROUND, maxSlope: 0.05, roadAccess: true, nearTrees: { radius: 8, min: 30 } },
+    basic: true,   // Grundbetrieb: Baustelle bekommt zuerst Bautrupp und Material
     production: { inputs: {}, outputs: { logs: 160 } },
     logsPerTree: 20, plantPerMonth: 8,
     upkeep: 120, workers: 2,
@@ -80,15 +81,17 @@ export const BUILDINGS = {
     id: 'sawmill', name: 'Sägewerk', category: 'industry',
     description: 'Verarbeitet Rundholz zu Brettern.',
     footprint: { width: 2, height: 2 },
-    buildCost: { money: 3750, planks: 20, stone: 20 },
+    buildCost: { money: 3750, logs: 60 },
     requirements: { terrain: SOFT_GROUND, maxSlope: 0.04, roadAccess: true },
     production: { inputs: { logs: 160 }, outputs: { planks: 240 } },
+    basic: true,
     upkeep: 200, workers: 3,
     art: { kind: 'box', wallH: 17, gable: 0, wall: '#86684a', roof: '#8e9694', siding: 4, opening: true, planks: true, pipe: true, stripes: true },
   },
   quarry: extractor('quarry', 'Steinbruch', 'Bricht Rohstein aus einem Steinvorkommen.', O.DEP_STONE, 'stone', 200,
-    { money: 3000, planks: 30 }, 180, [],
+    { money: 3000, planks: 20, logs: 20 }, 180, [],
     { kind: 'box', wallH: 10, gable: 7, wall: '#8a8478', roof: '#6d6a62', siding: 3, door: true, piles: ['#6f6f68', '#8e8e86', '#a9a99f'] }),
+  // (Steinbruch ist Grundbetrieb, siehe unten)
   iron_mine: extractor('iron_mine', 'Eisenerzmine', 'Fördert Eisenerz. Braucht ein Eisenerzvorkommen.', O.DEP_IRON, 'iron_ore', 120,
     { money: 6250, planks: 50, stone: 40 }, 260, ['sawmill'],
     { kind: 'box', wallH: 14, gable: 9, wall: '#6f6a62', roof: '#5a4a40', siding: 4, gate: true, headframe: true, piles: ['#5e3a2a', '#7d4c36', '#9c6244'] }),
@@ -263,6 +266,53 @@ export const BUILDINGS = {
     unlock: ['concrete_plant', 'glassworks'],
     art: { kind: 'box', wallH: 26, gable: 0, wall: '#b7b3a8', roof: '#6b6a66', siding: 6, door: true, windows: true },
   },
+  container_home: {
+    id: 'container_home', name: 'Containerhaus', category: 'residential',
+    description: 'Zwei gestapelte Frachtcontainer als Wohnung für 3 Bewohner. Schnell und billig, braucht wenig Material.',
+    footprint: { width: 1, height: 1 },
+    buildCost: { money: 1300, planks: 12, stone: 10 },
+    requirements: { terrain: SOFT_GROUND, maxSlope: 0.06, roadAccess: true },
+    upkeep: 8, residents: 3,
+    art: { kind: 'box', wallH: 16, gable: 0, wall: '#4f7a7a', roof: '#6e6a62', siding: 4, door: true, windows: true },
+  },
+  duplex: {
+    id: 'duplex', name: 'Doppelhaus', category: 'residential',
+    description: 'Zwei Haushälften unter einem Dach für zusammen 8 Bewohner. Über 5 Bewohner erst mit zwei Nahrungssorten.',
+    footprint: { width: 2, height: 1 },
+    buildCost: { money: 5400, planks: 36, stone: 40 },
+    requirements: { terrain: SOFT_GROUND, maxSlope: 0.05, roadAccess: true },
+    upkeep: 28, residents: 8, needsVariety: { min: 2, below: 5 },
+    art: { kind: 'box', wallH: 17, gable: 10, wall: '#cdbb98', roof: '#7a4a32', siding: 0, door: true, windows: true, chimney: true },
+  },
+  dormitory: {
+    id: 'dormitory', name: 'Arbeiterwohnheim', category: 'residential',
+    description: 'Dreistöckiges Wohnheim aus Fertigteilen für 18 Bewohner – viele Arbeitskräfte auf wenig Fläche. Über 8 Bewohner erst mit zwei Nahrungssorten. Bringt wenig Steuern.',
+    footprint: { width: 2, height: 2 },
+    buildCost: { money: 8800, planks: 50, stone: 60, steel: 12 },
+    requirements: { terrain: SOFT_GROUND, maxSlope: 0.05, roadAccess: true },
+    upkeep: 45, residents: 18, needsVariety: { min: 2, below: 8 }, taxMul: 0.7,
+    art: { kind: 'box', wallH: 24, gable: 0, wall: '#a9a294', roof: '#5e5c58', siding: 6, door: true, windows: true },
+  },
+  villa: {
+    id: 'villa', name: 'Stadtvilla', category: 'residential',
+    description: 'Großzügige Villa mit Garten und Pool für 8 Bewohner, die doppelt so viel Steuern zahlen. Verschönert die Nachbarschaft. Über 4 Bewohner nur mit drei Nahrungssorten.',
+    footprint: { width: 2, height: 2 },
+    buildCost: { money: 14000, planks: 40, stone: 70, glass: 15 },
+    requirements: { terrain: SOFT_GROUND, maxSlope: 0.04, roadAccess: true },
+    upkeep: 70, residents: 8, needsVariety: { min: 3, below: 4 }, taxMul: 2, beauty: 2,
+    unlock: ['glassworks'],
+    art: { kind: 'box', wallH: 17, gable: 9, wall: '#e2ddd0', roof: '#a5603f', siding: 0, door: true, windows: true },
+  },
+  highrise: {
+    id: 'highrise', name: 'Hochhaus', category: 'residential',
+    description: 'Zehnstöckiges Wohnhochhaus aus Betonfertigteilen für 40 Bewohner. Über 12 Bewohner nur mit drei Nahrungssorten.',
+    footprint: { width: 2, height: 2 },
+    buildCost: { money: 26000, planks: 40, concrete: 160, steel: 45, glass: 40 },
+    requirements: { terrain: SOFT_GROUND, maxSlope: 0.04, roadAccess: true },
+    upkeep: 160, residents: 40, needsVariety: { min: 3, below: 12 },
+    unlock: ['apartment'],
+    art: { kind: 'box', wallH: 46, gable: 0, wall: '#bdb7aa', roof: '#6b6a66', siding: 6, door: true, windows: true },
+  },
   // --- Deko -------------------------------------------------------------------------
   lamp: { id: 'lamp', name: 'Straßenlaterne', category: 'deco', description: 'Leuchtet abends und nachts. Verschönert die Umgebung.',
     footprint: { width: 1, height: 1 }, buildCost: { money: 120 }, requirements: { terrain: DECO_GROUND, maxSlope: 0.12 }, upkeep: 2, instant: true, beauty: 1, art: { kind: 'prop', prop: 'lamp' } },
@@ -329,8 +379,13 @@ export const BUILDINGS = {
   },
 };
 
+BUILDINGS.quarry.basic = true;
+// Rauch aus Schornsteinen (Darstellung): heavy = Industrie im Betrieb, light = bewohntes Haus mit Kamin
+for (const id of ['smelter', 'glassworks', 'cement_works', 'concrete_plant', 'bakery']) if (BUILDINGS[id]) BUILDINGS[id].smoke = 'heavy';
+for (const id of ['house_small', 'wood_house', 'brick_house', 'duplex', 'row_house']) if (BUILDINGS[id]) BUILDINGS[id].smoke = 'light';
+
 export const BUILD_MENU = [
-  'landing_module', 'shelter', 'wood_house', 'house_small', 'brick_house', 'row_house', 'apartment',
+  'landing_module', 'shelter', 'container_home', 'wood_house', 'house_small', 'duplex', 'brick_house', 'row_house', 'dormitory', 'villa', 'apartment', 'highrise',
   'fisher_hut', 'food_store', 'farm', 'ranch', 'mill', 'bakery', 'butcher', 'greenhouse',
   'warehouse', 'silo', 'haulage', 'drone_port', 'trade_office', 'depot',
   'lamp', 'bench', 'bin', 'flowers', 'plant_tree', 'plant_conifer', 'fountain',

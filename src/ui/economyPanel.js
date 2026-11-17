@@ -1,5 +1,6 @@
 // Wirtschaftsfenster: Lager und Verkauf, Monatsbilanz, Betriebe.
 
+import { marketPrice } from '../simulation/market.js';
 import { GOODS, GOOD_IDS, FOOD_IDS, fmt } from '../config/economy.js';
 import { totalCap } from '../simulation/inventory.js';
 import { BUILDINGS } from '../config/buildings.js';
@@ -8,6 +9,12 @@ import { statusInfo, recipeText } from './status.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+function priceText(st, g) {
+  const p = marketPrice(st, g), base = GOODS[g].price;
+  const pct = Math.round((p / base) * 100);
+  return `${p.toLocaleString('de-DE', { maximumFractionDigits: 2 })} Cr / ${GOODS[g].unit}${pct < 98 ? ` (${pct} %)` : ''}`;
+}
 
 export class EconomyPanel {
   // api: { state(), capacity(), sell(good, amount), cfg, focus(building) }
@@ -61,7 +68,7 @@ export class EconomyPanel {
           const G = GOODS[g];
           return `<div class="eco-row" data-row="${g}">
             <div><div class="name">${esc(G.name)}</div><div class="sub" data-sub="${g}"></div></div>
-            <div class="sub" style="text-align:right">${fmt(G.price)} Cr / ${esc(G.unit)}</div>
+            <div class="sub" style="text-align:right" data-price="${g}">${priceText(st, g)}</div>
             <div class="bar"><i data-bar="${g}"></i></div>
             <div class="sellbox">
               <input type="number" min="0" step="1" inputmode="numeric" data-good="${g}" value="0" aria-label="Menge ${esc(G.name)}">
@@ -72,7 +79,7 @@ export class EconomyPanel {
             </div></div>`;
         }).join('');
         const hist = st.history.slice(-12).reverse().map((h) => `<li><span>${esc(h.text)}</span><span>${h.money ? (h.money > 0 ? '+' : '') + fmt(h.money) + ' Cr' : ''}</span></li>`).join('');
-        this.body.innerHTML = `<div id="eco-food"></div><p class="muted">Bestände aller Lager zusammen (Landemodul, Lagerhallen, Silos). Waren in den Betrieben, die noch auf Abholung warten, zählen erst, wenn ein Lkw sie ins Lager gebracht hat. Verkauf zum Festpreis an die Versorgungsflüge. Leere Waren sind ausgeblendet.</p>${rows}
+        this.body.innerHTML = `<div id="eco-food"></div><p class="muted">Bestände aller Lager zusammen (Landemodul, Lagerhallen, Silos). Waren in den Betrieben, die noch auf Abholung warten, zählen erst, wenn ein Lkw sie ins Lager gebracht hat. Verkauf an die Versorgungsflüge: Wer viel auf einmal verkauft, drückt den Preis (Prozentangabe); er erholt sich in einigen Monaten. Nachbarn zahlen oft mehr. Leere Waren sind ausgeblendet.</p>${rows}
           <h3>Verlauf</h3><ul class="hist">${hist || '<li>Noch keine Buchungen</li>'}</ul>`;
       }
       const food = this.body.querySelector('#eco-food');
@@ -89,7 +96,9 @@ export class EconomyPanel {
         const have = st.stock[g] || 0;
         const sub = this.body.querySelector(`[data-sub="${g}"]`);
         const capG = totalCap(st, g);
-        if (sub) sub.textContent = `${fmt(have)} von ${fmt(capG)} ${GOODS[g].unit} in den Lagern · Wert ${fmt(have * GOODS[g].price)} Cr`;
+        if (sub) sub.textContent = `${fmt(have)} von ${fmt(capG)} ${GOODS[g].unit} in den Lagern · Wert ${fmt(have * marketPrice(st, g))} Cr`;
+        const pr = this.body.querySelector(`[data-price="${g}"]`);
+        if (pr) pr.textContent = priceText(st, g);
         const bar = this.body.querySelector(`[data-bar="${g}"]`);
         if (bar) bar.style.width = `${Math.min(100, (have / Math.max(1, capG)) * 100)}%`;
       }

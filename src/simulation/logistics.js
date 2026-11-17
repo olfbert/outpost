@@ -112,7 +112,7 @@ export class Logistics {
         b.site.have = b.site.have || {};
         for (const [g, v] of Object.entries(b.site.need)) {
           const need = v - (b.site.used[g] || 0) - (b.site.have[g] || 0);
-          if (need > 1e-6) out.push({ b, g, need, buf: b.site.have, prio: 0 });
+          if (need > 1e-6) out.push({ b, g, need, buf: b.site.have, prio: def.basic ? -1 : 0 });
         }
         continue;
       }

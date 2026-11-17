@@ -113,14 +113,22 @@ export function updatePopulation(state, step, res) {
     const n = Math.floor(h.pop);
     residents += n;
     fedPeople += n * h.fed;
-    taxBase += n * POP.taxFactor[lvl] * (1 + (lvl > 0 ? beautyOf(state, h) : 0));
+    taxBase += n * POP.taxFactor[lvl] * (BUILDINGS[h.type].taxMul || 1) * (1 + (lvl > 0 ? beautyOf(state, h) : 0));
   }
   const fedAll = residents ? fedPeople / residents : 1;
   const efficiency = POP.hungryWork + (1 - POP.hungryWork) * Math.min(1, fedAll);
 
-  // Arbeitskraft verteilen: Vorrang zuerst, dann nach Baureihenfolge
+  // Arbeitskraft verteilen: Vorrang zuerst, dann Betriebe, deren Ware gerade auf Baustellen
+  // fehlt (z. B. das Sägewerk, wenn Häuser auf Bretter warten), dann nach Baureihenfolge.
+  const siteNeed = new Set();
+  for (const b of state.buildings) {
+    const s = b.site;
+    if (!s) continue;
+    for (const [g, v] of Object.entries(s.need)) if (v - (s.used[g] || 0) - (s.have?.[g] || 0) > 1e-6 && (state.stock?.[g] || 0) < v) siteNeed.add(g);
+  }
+  const urgent = (b) => { const out = BUILDINGS[b.type].production?.outputs; return out && Object.keys(out).some((g) => siteNeed.has(g)) ? 1 : 0; };
   const jobs = state.buildings.filter((b) => !b.site && !b.paused && BUILDINGS[b.type]?.workers)
-    .sort((a, b) => (b.priority ? 1 : 0) - (a.priority ? 1 : 0) || (a.builtAt || 0) - (b.builtAt || 0));
+    .sort((a, b) => (b.priority ? 1 : 0) - (a.priority ? 1 : 0) || urgent(b) - urgent(a) || (a.builtAt || 0) - (b.builtAt || 0));
   let free = residents, jobCount = 0;
   for (const b of jobs) {
     const need = BUILDINGS[b.type].workers;

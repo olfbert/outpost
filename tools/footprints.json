@@ -131,5 +131,25 @@
  "depot": [
   2,
   2
+ ],
+ "container_home": [
+  1,
+  1
+ ],
+ "duplex": [
+  2,
+  1
+ ],
+ "dormitory": [
+  2,
+  2
+ ],
+ "villa": [
+  2,
+  2
+ ],
+ "highrise": [
+  2,
+  2
  ]
 }
