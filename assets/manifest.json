@@ -169,6 +169,26 @@
       "file": "buildings/logistics/trade_office_01.png",
       "ax": 34,
       "ay": 33
+    },
+    "wood_house": {
+      "file": "buildings/residential/wood_house_01.png",
+      "ax": 34,
+      "ay": 13
+    },
+    "brick_house": {
+      "file": "buildings/residential/brick_house_01.png",
+      "ax": 30,
+      "ay": 18
+    },
+    "row_house": {
+      "file": "buildings/residential/row_house_01.png",
+      "ax": 68,
+      "ay": 22
+    },
+    "drone_port": {
+      "file": "buildings/logistics/drone_port_01.png",
+      "ax": 65,
+      "ay": 21
     }
   }
 }
