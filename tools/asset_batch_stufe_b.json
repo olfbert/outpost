@@ -23,6 +23,17 @@
       "tone": "0.9,0.95",
       "shadow": 0.3,
       "erode": 2
+    },
+    {
+      "job": "67fbf18d",
+      "sprite": "trade_office",
+      "out": "assets/buildings/logistics/trade_office_01.png",
+      "width": 72,
+      "footprint": "1x1",
+      "hue": "285,375",
+      "tone": "0.9,0.95",
+      "shadow": 0.3,
+      "erode": 2
     }
   ]
 }

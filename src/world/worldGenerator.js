@@ -306,6 +306,7 @@ export function createWorld(seedStr, cfg) {
 
   return {
     seedStr: String(seedStr),
+    seedNum: base >>> 0,
     size: W,
     start,
     sample,

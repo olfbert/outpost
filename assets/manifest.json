@@ -164,6 +164,11 @@
       "file": "buildings/logistics/silo_01.png",
       "ax": 54,
       "ay": 69
+    },
+    "trade_office": {
+      "file": "buildings/logistics/trade_office_01.png",
+      "ax": 34,
+      "ay": 33
     }
   }
 }

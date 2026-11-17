@@ -28,6 +28,11 @@ export class Placement {
       if (!def) continue;
       for (let j = 0; j < def.footprint.height; j++) for (let i = 0; i < def.footprint.width; i++) this.occ.set(this.key(b.x + i, b.y + j), b);
     }
+    // Gebäude der Computer-Nachbarn blockieren ebenfalls
+    for (const b of this.state.npcBuildings || []) {
+      const def = BUILDINGS[b.type];
+      for (let j = 0; j < def.footprint.height; j++) for (let i = 0; i < def.footprint.width; i++) this.occ.set(this.key(b.x + i, b.y + j), b);
+    }
   }
 
   buildingAt(x, y) { return this.occ.get(this.key(x, y)) || null; }

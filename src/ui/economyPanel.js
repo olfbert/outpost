@@ -44,6 +44,7 @@ export class EconomyPanel {
       this.render(true);
     }
     if (b.dataset.act === 'focus') { this.dlg.close(); this.api.focus(b.dataset.id); }
+    if (b.dataset.act === 'buy') { this.msg = this.api.buy ? this.api.buy(good, +b.dataset.n) : ''; const top = this.body.scrollTop; this.render(true); this.body.scrollTop = top; }
   }
 
   // full = auch Eingabefelder neu aufbauen (sonst nur Zahlen aktualisieren)
@@ -105,6 +106,13 @@ export class EconomyPanel {
       const popText = pop ? ` Einwohner: ${fmt(pop.residents)} · Arbeitsplätze: ${fmt(pop.jobs)}${pop.jobs > pop.residents ? ` – es fehlen ${fmt(pop.jobs - pop.residents)} Arbeiter, Betriebe laufen langsamer` : ''}.` : '';
       this.body.innerHTML = `<p class="muted">Betriebskosten werden am Monatsende abgebucht, ebenso kommen dann die Steuern der versorgten Bewohner herein (in den Einnahmen enthalten). Laufend: ${fmt(upkeep)} Cr je Monat. Kontostand: ${fmt(st.money)} Cr.${popText}</p>
         <table class="ledger"><thead><tr><th>Monat</th><th>Einnahmen</th><th>Bau</th><th>Betrieb</th><th>Saldo</th></tr></thead><tbody>${rows || '<tr><td colspan="5">Noch keine Buchungen</td></tr>'}</tbody></table>`;
+    } else if (this.tab === 'buy') {
+      const rows = GOOD_IDS.map((g) => {
+        const G = GOODS[g], price = Math.round(G.price * 2 * 100) / 100;
+        return `<div class="eco-row"><div><div class="name">${esc(G.name)}</div><div class="sub">${fmt(price)} Cr je ${esc(G.unit)} · im Lager ${fmt(st.stock[g] || 0)}</div></div>
+          <div class="sellbox"><button class="btn small" data-act="buy" data-good="${g}" data-n="10">+10</button><button class="btn small" data-act="buy" data-good="${g}" data-n="100">+100</button><button class="btn small primary" data-act="buy" data-good="${g}" data-n="500">+500</button></div></div>`;
+      }).join('');
+      this.body.innerHTML = `<p class="muted">Einkauf bei den Versorgungsflügen der Erde: jederzeit möglich, aber zum doppelten Grundpreis. Die Ware landet im Landemodul. Günstiger kaufst du bei den Nachbarn (Handelskontor, Knopf mit den Pfeilen am rechten Rand).</p>${this.msg ? `<p class="muted">${esc(this.msg)}</p>` : ''}${rows}`;
     } else if (this.tab === 'transport') {
       const L = this.api.logistics ? this.api.logistics() : null;
       const ls = L ? L.stats : {};

@@ -221,7 +221,7 @@ export class MenuDialog {
     $('opt-tilt').checked = info.settings.tilt !== false;
     $('opt-cheats').checked = !!(info.settings.cheats && info.settings.cheats.on);
     $('opt-clouds').checked = info.settings.clouds !== false;
-    $('menu-version').textContent = `Version ${GAME_VERSION} · Stufe B (Lager, Lkw, Logistik)${info.settings.cheats && info.settings.cheats.used ? ' · Spielstand mit Cheats' : ''}` + (info.storage ? '' : ' · Speichern in dieser Ansicht nicht verfügbar');
+    $('menu-version').textContent = `Version ${GAME_VERSION} · Stufe B+D (Logistik, Brücken, Nachbarn, Handel)${info.settings.cheats && info.settings.cheats.used ? ' · Spielstand mit Cheats' : ''}` + (info.storage ? '' : ' · Speichern in dieser Ansicht nicht verfügbar');
     if (this.dlg.showModal) this.dlg.showModal(); else this.dlg.setAttribute('open', '');
   }
 }

@@ -42,6 +42,7 @@
 <canvas id="minimap" width="300" height="150" aria-label="Weltübersicht"></canvas>
 
 <div id="side-buttons">
+  <button class="icon-btn" id="btn-trade" aria-label="Handel"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h13l-3-3M20 16H7l3 3"/></svg></button>
   <button class="icon-btn cheat-btn" id="btn-cheats" aria-label="Cheats" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg></button>
   <button class="icon-btn" id="btn-zoom-in" aria-label="Hineinzoomen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
   <button class="icon-btn" id="btn-zoom-out" aria-label="Herauszoomen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg></button>
@@ -147,6 +148,15 @@
   </div>
 </dialog>
 
+<dialog id="trade">
+  <div class="dialog-head">
+    <h2>Handel</h2>
+    <button class="icon-btn" id="trade-close" aria-label="Schließen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  </div>
+  <div class="tabs" role="tablist" id="trade-tabs"></div>
+  <div class="dialog-body" id="trade-body"></div>
+</dialog>
+
 <dialog id="economy">
   <div class="dialog-head">
     <h2>Wirtschaft</h2>
@@ -157,6 +167,7 @@
     <button class="tab" data-tab="ledger">Bilanz</button>
     <button class="tab" data-tab="prod">Betriebe</button>
     <button class="tab" data-tab="transport">Transport</button>
+    <button class="tab" data-tab="buy">Einkauf</button>
   </div>
   <div class="dialog-body" id="eco-body"></div>
 </dialog>

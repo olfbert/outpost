@@ -62,6 +62,31 @@ function roadPixel(r, dx, dy, L, R, U, D, n, n2) {
   return C[n < 70 ? 0 : n < 200 ? 1 : 2];
 }
 
+// Brücke über Wasser: Bohlenbelag mit Geländer, Schatten aufs Wasser
+const BRIDGE = [rgba('#7d6243'), rgba('#8a6d4b'), rgba('#977854'), rgba('#4f3d2a'), rgba('#a88a62')];
+const BRIDGE_SHADOW = rgba('#1d3b48');
+function bridgePixel(dx, dy, L, R, U, D, n, water) {
+  const h = 0.26;
+  const adx = dx < 0 ? -dx : dx, ady = dy < 0 ? -dy : dy;
+  let dist, along;
+  if (adx <= h && ady <= h) {
+    const cx = (dx < 0 ? L : R) ? 9 : h - adx;
+    const cy = (dy < 0 ? U : D) ? 9 : h - ady;
+    dist = cx < cy ? cx : cy; along = (L || R) ? dx : dy;
+  } else if (ady <= h && ((dx < 0 && L) || (dx > 0 && R))) { dist = h - ady; along = dx; }
+  else if (adx <= h && ((dy < 0 && U) || (dy > 0 && D))) { dist = h - adx; along = dy; }
+  else {
+    // Schatten der Brücke unten rechts auf dem Wasser
+    const sdx = dx - 0.05, sdy = dy - 0.05;
+    const inX = Math.abs(sdy) <= h && ((sdx < 0 && L) || (sdx > 0 && R) || Math.abs(sdx) <= h);
+    const inY = Math.abs(sdx) <= h && ((sdy < 0 && U) || (sdy > 0 && D) || Math.abs(sdy) <= h);
+    return water && (inX || inY) ? BRIDGE_SHADOW : 0;
+  }
+  if (dist < 0.05) return BRIDGE[3];                     // Geländer
+  if (((along + 2) * 9 | 0) % 2 === 0 && dist > 0.07) return BRIDGE[n < 120 ? 0 : 1];   // Bohlenfugen
+  return BRIDGE[n < 60 ? 1 : n < 220 ? 2 : 4];
+}
+
 // Periodisches Rauschen (256 x 256) für Grenzversatz und Körnung.
 function periodic(cell, seed) {
   const n = 256 / cell, out = new Float32Array(65536);
@@ -245,7 +270,10 @@ export function bakeGround(store, wx0, wy0, size, res, img) {
           const ri = ((rty & mask) + 2) * P + (rtx & mask) + 2;
           const r = rd[ri];
           if (r) {
-            const rcol = roadPixel(r, rfx - rtx - 0.5, rfy - rty - 0.5, rd[ri - 1], rd[ri + 1], rd[ri - P], rd[ri + P], n, TEX2[ji]);
+            const overWater = rc.terrain[ri] <= T.RIVER;
+            const rcol = overWater
+              ? bridgePixel(rfx - rtx - 0.5, rfy - rty - 0.5, rd[ri - 1], rd[ri + 1], rd[ri - P], rd[ri + P], n, true)
+              : roadPixel(r, rfx - rtx - 0.5, rfy - rty - 0.5, rd[ri - 1], rd[ri + 1], rd[ri - P], rd[ri + P], n, TEX2[ji]);
             if (rcol) col = rcol;
           }
         }

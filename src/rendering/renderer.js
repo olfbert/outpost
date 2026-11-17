@@ -356,6 +356,7 @@ export class Renderer {
       const list = [];
       for (const c of chunks) { const d = this._chunkDraw(c); for (let i = 0; i < d.length; i++) list.push(d[i]); }
       for (const b of this.state.buildings) for (const st of this._buildingStrips(b)) list.push(st);
+      for (const b of this.state.npcBuildings || []) for (const st of this._buildingStrips(b)) list.push(st);
       list.sort((a, b) => a.wy - b.wy);
       this.list = list; this.listKey = key;
     }
@@ -397,7 +398,7 @@ export class Renderer {
   }
 
   _drawBuildingsFlat(lvl, cam, s) {
-    const ctx = this.ctx, bs = this.state.buildings;
+    const ctx = this.ctx, bs = this.state.npcBuildings && this.state.npcBuildings.length ? this.state.buildings.concat(this.state.npcBuildings) : this.state.buildings;
     if (!bs.length && !this.state.roads.size) return;
     if (lvl === 3) {
       // Wege als Linien
@@ -523,5 +524,6 @@ export class Renderer {
       const q = ov.settlement;
       this._label(q.name, (q.x - q.y) * 32, (q.x + q.y) * 16 - 22 * px, cam, true);
     }
+    if (ov.neighbors) for (const q of ov.neighbors) this._label(q.name, (q.x - q.y) * 32, (q.x + q.y) * 16 - 26 * px, cam, false);
   }
 }

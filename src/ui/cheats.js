@@ -73,5 +73,13 @@ export class CheatPanel {
     this.btn.classList.toggle('fast', sp > 1);
   }
 
-  open() { this.sync(); $('cheat-msg').textContent = ''; this.dlg.showModal(); }
+  open() {
+    this.sync();
+    $('cheat-msg').textContent = '';
+    this.dlg.showModal();
+    // Safari springt beim Öffnen sonst ans Ende (Fokus); immer oben beginnen
+    const body = this.dlg.querySelector('.dialog-body');
+    requestAnimationFrame(() => { body.scrollTop = 0; });
+    window.scrollTo(0, 0);
+  }
 }

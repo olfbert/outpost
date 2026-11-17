@@ -168,6 +168,7 @@ export class Production {
       if (st.gameMonths >= nextMonth - 1e-9) {
         st.gameMonths = nextMonth;
         res.months.push(this._closeMonth(nextMonth - 1));
+        if (this.onMonth) this.onMonth(1, res);
         this._regrow(res);
         const a = monthIndex(nextMonth - 1), b2 = monthIndex(nextMonth);
         if (fieldPhase(a) !== fieldPhase(b2)) res.season = true;

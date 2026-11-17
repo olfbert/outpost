@@ -196,7 +196,7 @@ export class Life {
     this._rebuildChickens();
   }
 
-  _building(id) { return this.state.buildings.find((b) => b.id === id); }
+  _building(id) { return this.state.buildings.find((b) => b.id === id) || (this.state.npcBuildings || []).find((b) => b.id === id); }
 
   _planTrip(p, fromB, toB) {
     const a = this.door(fromB), b = this.door(toB);

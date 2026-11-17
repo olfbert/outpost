@@ -1,11 +1,11 @@
 # OUTPOST
 
 Isometrisches Endlos-Aufbauspiel auf einem neu besiedelten Planeten.
-Stand: **Stufe B – Lager, Lkw, Logistik** (Version 0.8.0), aufbauend auf Phase 1–4 und Stufe A.
+Stand: **Version 0.9.0** – Phase 1–4, Stufe A (Versorgung), Stufe B (Logistik), dazu Brücken, Computer-Nachbarn, Handel und Cheat-Modus.
 
 Der vollständige Arbeitsauftrag steht unverändert in `CLAUDE.md`.
 Entscheidungen, die davon abweichen oder ihn konkretisieren, stehen in `docs/ENTSCHEIDUNGEN.md` (Phase 1)
-und `docs/ENTSCHEIDUNGEN_PHASE2.md`; die Optik-Anpassung nach Referenz in `docs/ENTSCHEIDUNGEN_OPTIK.md`; Phase 3 in `docs/ENTSCHEIDUNGEN_PHASE3.md`; Menschen und Tiere in `docs/ENTSCHEIDUNGEN_LEBEN.md`; Phase 4 in `docs/ENTSCHEIDUNGEN_PHASE4.md`; Holzernte, Nachwachsen und Vorkommen in `docs/ENTSCHEIDUNGEN_NATUR.md`; neue Preise, schnellerer Abbau und Laufwege um Gebäude in `docs/ENTSCHEIDUNGEN_BALANCE.md`; Stufe A (Baustellen, Bevölkerung, Nahrung, Felder, Winter) in `docs/ENTSCHEIDUNGEN_STUFE_A.md`; Stufe B (Lager, Puffer, Lkw, Disposition) in `docs/ENTSCHEIDUNGEN_STUFE_B.md`.
+und `docs/ENTSCHEIDUNGEN_PHASE2.md`; die Optik-Anpassung nach Referenz in `docs/ENTSCHEIDUNGEN_OPTIK.md`; Phase 3 in `docs/ENTSCHEIDUNGEN_PHASE3.md`; Menschen und Tiere in `docs/ENTSCHEIDUNGEN_LEBEN.md`; Phase 4 in `docs/ENTSCHEIDUNGEN_PHASE4.md`; Holzernte, Nachwachsen und Vorkommen in `docs/ENTSCHEIDUNGEN_NATUR.md`; neue Preise, schnellerer Abbau und Laufwege um Gebäude in `docs/ENTSCHEIDUNGEN_BALANCE.md`; Stufe A (Baustellen, Bevölkerung, Nahrung, Felder, Winter) in `docs/ENTSCHEIDUNGEN_STUFE_A.md`; Stufe B (Lager, Puffer, Lkw, Disposition) in `docs/ENTSCHEIDUNGEN_STUFE_B.md`; Lkw-Korrekturen und Cheat-Modus in `docs/ENTSCHEIDUNGEN_STUFE_B_LKW.md` und `docs/ENTSCHEIDUNGEN_CHEATS.md`; Brücken, Nachbarn und Handel in `docs/ENTSCHEIDUNGEN_STUFE_D.md`.
 
 ## Starten
 

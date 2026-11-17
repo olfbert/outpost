@@ -21,6 +21,7 @@ export function newState(seed, cfg) {
     money: cfg.startBudget,
     stock: { ...START_STOCK }, // Summe aller Lager (wird berechnet)
     unstored: { ...START_STOCK }, // Fracht des Landemoduls, solange noch kein Lager steht
+    neighbors: [],             // veränderlicher Zustand der Computer-Nachbarn (Lage folgt aus dem Seed)
     roads: new Map(),        // Feldschlüssel -> Wegtyp (Index in ROADS)
     history: [],             // letzte Ausgaben/Einnahmen { t, gm, text, money }
     gameMonths: 2,           // Spielzeit in Monaten (fließend); Start am 1. März zur Aussaat
@@ -51,6 +52,7 @@ export function serialize(state) {
     history: state.history.slice(-50),
     gameMonths: state.gameMonths,
     taxAcc: state.taxAcc || 0,
+    neighbors: state.neighbors || [],
     ledger: state.ledger,
     settlements: state.settlements,
     buildings: state.buildings.map((b) => {
@@ -93,6 +95,7 @@ export function deserialize(data, cfg) {
   if (Array.isArray(data.history)) s.history = data.history.slice(-50);
   s.gameMonths = Number.isFinite(data.gameMonths) ? data.gameMonths : 0;
   s.taxAcc = Number.isFinite(data.taxAcc) ? data.taxAcc : 0;
+  s.neighbors = Array.isArray(data.neighbors) ? data.neighbors.filter((n) => n && n.id && n.stock) : [];
   if (Array.isArray(data.ledger)) s.ledger = data.ledger.slice(-24);
   s.cleared = new Set(Array.isArray(data.cleared) ? data.cleared : []);
   s.felled = new Map(Array.isArray(data.felled) ? data.felled.filter((e) => Array.isArray(e) && Number.isFinite(e[1])) : []);

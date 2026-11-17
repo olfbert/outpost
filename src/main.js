@@ -5,8 +5,8 @@
 import { CONFIG } from './config/gameConfig.js';
 import { BUILDINGS } from './config/buildings.js';
 import { ROADS } from './config/roads.js';
-import { costText, GOODS } from './config/economy.js';
-import { Production, sell } from './simulation/production.js';
+import { costText, GOODS, fmt } from './config/economy.js';
+import { Production, sell, ledgerFor } from './simulation/production.js';
 import { dateText, monthLabel } from './simulation/gameClock.js';
 import { EconomyPanel } from './ui/economyPanel.js';
 import { createWorld, randomSeed } from './world/worldGenerator.js';
@@ -30,8 +30,10 @@ import { SaveUi } from './ui/saveUi.js';
 import { fieldBox } from './simulation/farming.js';
 import { updatePopulation } from './simulation/population.js';
 import { TRUCK, truckCount } from './simulation/logistics.js';
-import { addGoods, stores, storeCap } from './simulation/inventory.js';
+import { addGoods, takeGoods, stores, storeCap } from './simulation/inventory.js';
 import { CheatPanel, cheat } from './ui/cheats.js';
+import { TradePanel } from './ui/tradePanel.js';
+import { siteNeighbors, freshNeighbor, advanceNeighbor, offers, layoutNeighbor, TRADE } from './simulation/neighbors.js';
 import { GOOD_IDS, FOOD_VARIETY } from './config/economy.js';
 
 const $ = (id) => document.getElementById(id);
@@ -71,6 +73,78 @@ function scheduleSave(ms = 1200) {
 }
 
 // --- Welt starten ---------------------------------------------------------------
+// --- Computer-Nachbarn -----------------------------------------------------------------
+let neighborSites = [];
+const nbBucket = (n) => Math.floor(n.size / 30) * 30;
+function setupNeighbors() {
+  neighborSites = siteNeighbors(world, store);
+  state.neighbors = state.neighbors || [];
+  for (const site of neighborSites) if (!state.neighbors.find((n) => n.id === site.id)) state.neighbors.push(freshNeighbor(site));
+  applyNeighborLayouts();
+}
+function applyNeighborLayouts() {
+  state.npcBuildings = [];
+  state.npcRoads = new Set();
+  const W = world.size;
+  for (const site of neighborSites) {
+    const n = state.neighbors.find((q) => q.id === site.id);
+    if (!n) continue;
+    site.bucket = nbBucket(n);
+    const lay = layoutNeighbor(world, store, site, site.bucket);
+    site.station = lay.station;
+    site.stationB = lay.buildings.find((b) => b.station) || null;
+    for (const b of lay.buildings) {
+      state.npcBuildings.push(b);
+      // Bewuchs auf und direkt um die Gebäude räumen
+      const d = BUILDINGS[b.type].footprint;
+      for (let j = -1; j <= d.height; j++) for (let i = -1; i <= d.width; i++) state.cleared.add((b.y + j) * W + b.x + i);
+    }
+    for (const k of lay.roads) { if (!state.roads.has(k)) state.roads.set(k, 2); state.npcRoads.add(k); state.cleared.add(k); }
+    store.invalidateArea(site.x - 24, site.y - 24, site.x + 24, site.y + 24);
+    if (renderer.world === world) renderer.invalidateTiles(site.x - 24, site.y - 24, 49, 49, true);
+  }
+  state.roadRev = (state.roadRev || 0) + 1;
+  placement.rebuild();
+  overlay.neighbors = neighborSites.map((q) => ({ name: q.name, x: q.x, y: q.y - 2 }));
+  state.rev++;
+}
+function neighborMonth(m) {
+  let grew = false;
+  for (const site of neighborSites) {
+    const n = state.neighbors.find((q) => q.id === site.id);
+    if (!n) continue;
+    advanceNeighbor(n, site, m);
+    if (nbBucket(n) !== site.bucket) grew = true;
+  }
+  if (grew) applyNeighborLayouts();
+}
+function tradeOffice() { return state.buildings.find((b) => b.type === 'trade_office' && !b.site); }
+function neighborConn(id) {
+  const site = neighborSites.find((q) => q.id === id);
+  if (!site) return { road: false, air: 0 };
+  const lm = state.buildings.find((b) => b.type === 'landing_module');
+  const air = lm ? Math.round(Math.hypot(lm.x - site.x, lm.y - site.y)) : 0;
+  const office = tradeOffice();
+  if (!office) return { road: false, air };
+  const net = production.logistics.net, d = net.door(office);
+  const sk = site.station.y * world.size + site.station.x;
+  const c = d != null ? net.costsFrom(d).get(sk) : undefined;
+  return c !== undefined ? { road: true, dist: Math.round(c), air } : { road: false, air };
+}
+function neighborOffers(id) {
+  const site = neighborSites.find((q) => q.id === id), n = state.neighbors.find((q) => q.id === id);
+  const o = offers(n, site), conn = neighborConn(id);
+  const mb = conn.road ? TRADE.roadMarkupBuy : TRADE.airMarkupBuy, ms = conn.road ? TRADE.roadMarkupSell : TRADE.airMarkupSell;
+  for (const x of o.sell) x.final = Math.round(x.price * mb * 100) / 100;
+  for (const x of o.buy) x.final = Math.round(x.price * ms * 100) / 100;
+  return o;
+}
+function tradeTruck(id, g, qty) {
+  // sichtbare Fahrt Kontor <-> Handelsstation, wenn per Straße verbunden
+  const site = neighborSites.find((q) => q.id === id), office = tradeOffice();
+  if (site && site.stationB && office && neighborConn(id).road) production.logistics._record(office, site.stationB, g, qty);
+}
+
 function startWorld(st) {
   state = st;
   const wcfg = { ...CONFIG, ...state.worldConfig };
@@ -78,7 +152,9 @@ function startWorld(st) {
   store = new ChunkStore(world, state, wcfg);
   placement = new Placement(world, store, state);
   roads = new Roads(world, store, state, placement);
+  setupNeighbors();
   production = new Production(world, store, state, placement, CONFIG);
+  production.onMonth = (m) => neighborMonth(m);
   placement.production = production;
   life = new Life(world, store, state, placement, sprites);
   life.logistics = production.logistics;
@@ -303,6 +379,12 @@ function selectAt(x, y) {
   if (!world.inBounds(x, y)) { overlay.selected = null; infoPanel.hide(); dirty = true; return; }
   const b = placement.buildingAt(x, y);
   const r = roads.at(x, y);
+  if (b && b.npc) {
+    // Gebäude eines Nachbarn: Handelsfenster öffnen
+    infoPanel.hide(); overlay.selected = null; dirty = true;
+    trade.open(b.npc);
+    return;
+  }
   if (b) {
     const def = BUILDINGS[b.type];
     overlay.selected = { x: b.x, y: b.y, w: def.footprint.width, h: def.footprint.height };
@@ -339,6 +421,20 @@ const economy = new EconomyPanel({
   capacity: () => production.capacity(),
   pop: () => life.stats,
   logistics: () => production.logistics,
+  buy(good, n) {
+    // Versorgungsflug: doppelter Grundpreis, Ware ins Landemodul
+    const lm = state.buildings.find((b) => b.type === 'landing_module');
+    if (!lm) return 'Zuerst das Landemodul setzen.';
+    const price = GOODS[good].price * TRADE.flightBuy;
+    let qty = n;
+    if (!cheat(state, 'free')) qty = Math.min(n, Math.floor(state.money / price));
+    if (qty < 1) return 'Nicht genug Geld.';
+    const cost = Math.round(qty * price);
+    if (!cheat(state, 'free')) pay(state, { money: cost }, 1, `${qty} ${GOODS[good].name} per Versorgungsflug gekauft`);
+    addGoods(state, { [good]: qty }, lm);
+    refreshState(); saveNow();
+    return `${fmt(qty)} ${GOODS[good].name} gekauft für ${fmt(cost)} Cr.`;
+  },
   cfg: CONFIG,
   sell(good, n) {
     const money = sell(state, good, n, GOODS[good].price, GOODS[good].name);
@@ -460,6 +556,44 @@ const menu = new MenuDialog({
   },
   setCheats(on) { cheats.setOn(on); },
 });
+
+// --- Handel ---------------------------------------------------------------------------
+const trade = new TradePanel({
+  state: () => state,
+  sites: () => neighborSites,
+  offersFor: (id) => neighborOffers(id),
+  conn: (id) => neighborConn(id),
+  hasOffice: () => !!tradeOffice(),
+  focus(id) { const q = neighborSites.find((s) => s.id === id); if (q) { camera.scale = Math.max(camera.scale, 0.5); camera.centerOnTile(q.x, q.y); dirty = true; } },
+  buy(id, g, want) {
+    const o = neighborOffers(id).sell.find((x) => x.g === g), n = state.neighbors.find((q) => q.id === id);
+    let qty = Math.min(want, o.qty);
+    if (!cheat(state, 'free')) qty = Math.min(qty, Math.floor(state.money / o.final));
+    if (qty < 1) return 'Nicht genug Geld oder kein Angebot.';
+    const cost = Math.round(qty * o.final);
+    if (!cheat(state, 'free')) pay(state, { money: cost }, 1, `${qty} ${GOODS[g].name} von ${neighborSites.find((q) => q.id === id).name} gekauft`);
+    n.stock[g] -= qty; n.traded += cost; n.relation = Math.min(100, n.relation + cost / 1500);
+    addGoods(state, { [g]: qty });
+    tradeTruck(id, g, qty);
+    refreshState(); saveNow();
+    return `${fmt(qty)} ${GOODS[g].name} gekauft für ${fmt(cost)} Cr – liegt im Lager.`;
+  },
+  sell(id, g, want) {
+    const o = neighborOffers(id).buy.find((x) => x.g === g), n = state.neighbors.find((q) => q.id === id);
+    const qty = Math.floor(Math.min(want, o.qty, state.stock[g] || 0));
+    if (qty < 1) return 'Nichts zu verkaufen.';
+    takeGoods(state, { [g]: qty });
+    const money = Math.round(qty * o.final);
+    state.money += money;
+    ledgerFor(state, Math.floor(state.gameMonths)).income += money;
+    state.history.push({ t: Date.now(), gm: state.gameMonths, text: `${qty} ${GOODS[g].name} an ${neighborSites.find((q) => q.id === id).name} verkauft`, money });
+    n.stock[g] = (n.stock[g] || 0) + qty; n.traded += money; n.relation = Math.min(100, n.relation + money / 1500);
+    tradeTruck(id, g, qty);
+    refreshState(); saveNow();
+    return `${fmt(qty)} ${GOODS[g].name} verkauft für ${fmt(money)} Cr.`;
+  },
+});
+$('btn-trade').addEventListener('click', () => trade.open());
 
 // --- Cheat-Modus ---------------------------------------------------------------------
 function finishAllSites() {
@@ -591,12 +725,16 @@ const input = new Input(canvas, camera, {
 });
 
 function resize() {
-  const w = window.innerWidth, h = window.innerHeight;
+  // Größe des tatsächlich belegten Fensters (in der Claude-App kann das iframe höher sein als der Bildschirm)
+  const r = document.body.getBoundingClientRect();
+  const w = Math.round(r.width) || window.innerWidth, h = Math.round(r.height) || window.innerHeight;
   renderer.resize(w, h);
   camera.resize(w, h);
   dirty = true;
 }
 window.addEventListener('resize', resize);
+if (window.visualViewport) window.visualViewport.addEventListener('resize', resize);
+if (window.ResizeObserver) new ResizeObserver(() => resize()).observe(document.body);
 window.addEventListener('orientationchange', () => setTimeout(resize, 200));
 document.addEventListener('visibilitychange', () => { if (document.hidden) saveNow(); else dirty = true; });
 window.addEventListener('pagehide', saveNow);

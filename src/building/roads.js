@@ -8,6 +8,9 @@ import { GOODS, REFUND_RATE, fmt } from '../config/economy.js';
 import { missingFor, pay } from '../state/gameState.js';
 import { cheat } from '../ui/cheats.js';
 
+// Brücken über Flüsse, Seen und flaches Meer (nicht über Tiefsee)
+export const BRIDGE = { maxSpan: 12, cost: { money: 220, planks: 5 } };
+
 export class Roads {
   constructor(world, store, state, placement) {
     this.world = world; this.store = store; this.state = state; this.placement = placement;
@@ -32,7 +35,8 @@ export class Roads {
     const ft = this.state.fieldTiles && this.state.fieldTiles.get(this.key(x, y));
     if (ft) return ft.kind === 'pasture' ? 'Weide im Weg' : 'Feld im Weg';
     const t = this.store.tile(x, y);
-    if (isWater(t.terrain)) return 'Wasser (Brücken folgen später)';
+    if (t.terrain === T.DEEP) return 'Zu tiefes Wasser für eine Brücke';
+    if (isWater(t.terrain)) return '';               // Brücke (Kosten und Spannweite prüft _check)
     if (t.terrain === T.SWAMP) return 'Sumpf';
     if (!ROADS[type].terrain.includes(t.terrain)) return 'Fels';
     if (isDeposit(t.obj)) return 'Rohstoffvorkommen';
@@ -64,12 +68,22 @@ export class Roads {
       else if (!same) { newTiles++; if (isTree(this.store.tile(p.x, p.y).obj)) trees++; }
       tiles.push({ x: p.x, y: p.y, ok: !why, same });
     }
+    // Brücken: Wasserfelder kosten extra; höchstens BRIDGE.maxSpan Felder am Stück
+    let bridge = 0, span = 0, maxSpan = 0;
+    for (const t of tiles) {
+      const w = t.ok && isWater(this.store.tile(t.x, t.y).terrain);
+      if (w && !t.same) bridge++;
+      span = w ? span + 1 : 0;
+      if (span > maxSpan) maxSpan = span;
+    }
+    if (maxSpan > BRIDGE.maxSpan) { bad++; reasons.add(`Brücke zu lang (${maxSpan} Felder, höchstens ${BRIDGE.maxSpan})`); }
     const cost = {};
     for (const [k, v] of Object.entries(def.cost)) cost[k] = v * newTiles;
+    for (const [k, v] of Object.entries(BRIDGE.cost)) cost[k] = (cost[k] || 0) + v * bridge;
     const missing = cheat(this.state, 'free') ? [] : missingFor(this.state, cost);
     for (const m of missing) reasons.add(`${GOODS[m.good].name} fehlt (${fmt(m.have)} von ${fmt(m.need)})`);
     if (!newTiles && !bad) reasons.add('Weg besteht schon');
-    return { kind: 'road', type, tiles, newTiles, trees, bad, cost, missing, reasons: [...reasons], ok: bad === 0 && newTiles > 0 && !missing.length };
+    return { kind: 'road', type, tiles, newTiles, trees, bad, bridge, cost, missing, reasons: [...reasons], ok: bad === 0 && newTiles > 0 && !missing.length };
   }
 
   build(plan) {
@@ -93,6 +107,7 @@ export class Roads {
   remove(x, y) {
     const type = this.at(x, y);
     if (!type) return 0;
+    if (this.state.npcRoads && this.state.npcRoads.has(this.key(x, y))) return 0;   // Wege der Nachbarn bleiben
     this.state.roads.delete(this.key(x, y));
     pay(this.state, ROADS[type].cost, -REFUND_RATE, `${ROADS[type].name} entfernt`);
     this.store.invalidateArea(x - 1, y - 1, x + 1, y + 1);

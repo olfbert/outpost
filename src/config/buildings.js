@@ -255,6 +255,15 @@ export const BUILDINGS = {
     upkeep: 40,
     art: { kind: 'box', wallH: 26, gable: 0, wall: '#9aa3a6', roof: '#7d878a', siding: 4, silo: true },
   },
+  trade_office: {
+    id: 'trade_office', name: 'Handelskontor', category: 'logistics',
+    description: 'Öffnet den Handel mit den Nachbarsiedlungen. Mit Straßenverbindung zu ihrer Handelsstation wird es deutlich billiger als per Luftfracht.',
+    footprint: { width: 1, height: 1 },
+    buildCost: { money: 6000, planks: 30, stone: 20 },
+    requirements: { terrain: SOFT_GROUND, maxSlope: 0.04, roadAccess: true },
+    upkeep: 100, workers: 2, unique: true,
+    art: { kind: 'box', wallH: 15, gable: 9, wall: '#c9b48a', roof: '#4d5e6e', siding: 0, door: true, windows: true },
+  },
   depot: {
     id: 'depot', name: 'Bauhof', category: 'industry',
     description: 'Stellt einen weiteren Bautrupp: zwei zusätzliche Baustellen gleichzeitig.',
@@ -270,7 +279,7 @@ export const BUILDINGS = {
 export const BUILD_MENU = [
   'landing_module', 'shelter', 'house_small', 'apartment',
   'fisher_hut', 'food_store', 'farm', 'ranch', 'mill', 'bakery', 'butcher', 'greenhouse',
-  'warehouse', 'silo', 'haulage', 'depot',
+  'warehouse', 'silo', 'haulage', 'trade_office', 'depot',
   'lumber_camp', 'sawmill', 'quarry',
   'clay_pit', 'sand_pit', 'lime_quarry', 'iron_mine', 'coal_mine',
   'smelter', 'cement_works', 'concrete_plant', 'glassworks',
