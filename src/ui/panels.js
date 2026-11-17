@@ -203,6 +203,7 @@ export class MenuDialog {
     $('opt-debug').addEventListener('change', (e) => this.api.setOption('debug', e.target.checked));
     $('opt-tilt').addEventListener('change', (e) => this.api.setOption('tilt', e.target.checked));
     $('opt-clouds').addEventListener('change', (e) => this.api.setOption('clouds', e.target.checked));
+    $('opt-cheats').addEventListener('change', (e) => this.api.setCheats && this.api.setCheats(e.target.checked));
     this.dlg.addEventListener('click', (e) => { if (e.target === this.dlg) this.dlg.close(); });
   }
 
@@ -218,8 +219,9 @@ export class MenuDialog {
     $('opt-minimap').checked = info.settings.minimap;
     $('opt-debug').checked = info.settings.debug;
     $('opt-tilt').checked = info.settings.tilt !== false;
+    $('opt-cheats').checked = !!(info.settings.cheats && info.settings.cheats.on);
     $('opt-clouds').checked = info.settings.clouds !== false;
-    $('menu-version').textContent = `Version ${GAME_VERSION} · Stufe B (Lager, Lkw, Logistik)` + (info.storage ? '' : ' · Speichern in dieser Ansicht nicht verfügbar');
+    $('menu-version').textContent = `Version ${GAME_VERSION} · Stufe B (Lager, Lkw, Logistik)${info.settings.cheats && info.settings.cheats.used ? ' · Spielstand mit Cheats' : ''}` + (info.storage ? '' : ' · Speichern in dieser Ansicht nicht verfügbar');
     if (this.dlg.showModal) this.dlg.showModal(); else this.dlg.setAttribute('open', '');
   }
 }

@@ -192,7 +192,8 @@ export class Logistics {
     }
     for (const b of st.buildings) if (b.site && b.site.status.startsWith('material:')) ws++;
     const m = this._month;
-    this.stats = { trucks, used: this.used, budget, util: m.budget ? m.used / m.budget : 0, movedPerMonth: m.budget ? m.moved / (m.budget / Math.max(1, trucks)) : 0, waitingPickup: wp, waitingSupply: ws };
+    // Auslastung erst nach etwas Laufzeit melden (ca. 2 Stunden je Lkw), sonst schwankt sie beim Start stark
+    this.stats = { trucks, used: this.used, budget, util: m.budget >= Math.max(1, trucks) * 0.08 ? m.used / m.budget : 0, movedPerMonth: m.budget ? m.moved / (m.budget / Math.max(1, trucks)) : 0, waitingPickup: wp, waitingSupply: ws };
     if (m.budget > Math.max(1, trucks) * 1) { m.used *= 0.5; m.budget *= 0.5; m.moved *= 0.5; }
     // Strecken langsam vergessen
     if (Math.random() < 0.05) for (const [k, r] of this.routes) { r.w *= 0.7; if (r.w < 0.5) this.routes.delete(k); }

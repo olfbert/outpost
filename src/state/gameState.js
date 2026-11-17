@@ -31,7 +31,7 @@ export function newState(seed, cfg) {
     cleared: new Set(),      // dauerhaft geräumte Felder (Bau, Weg) – Schlüssel y * Weltgröße + x
     felled: new Map(),       // gefällte Bäume: Feld -> Spielmonat des Fällens (wachsen nach)
     camera: null,
-    settings: { minimap: true, debug: false, tilt: true, clouds: true },
+    settings: { minimap: true, debug: false, tilt: true, clouds: true, cheats: { on: false } },
     rev: 0,                  // zählt Änderungen (für Caches), wird nicht gespeichert
   };
 }

@@ -9,6 +9,7 @@ import { missingFor, pay } from '../state/gameState.js';
 import { startSite, siteRefund } from '../simulation/construction.js';
 import { fieldBox, findFieldTiles } from '../simulation/farming.js';
 import { addGoods, storeUnstored, recomputeStock } from '../simulation/inventory.js';
+import { cheat } from '../ui/cheats.js';
 
 export class Placement {
   constructor(world, store, state) {
@@ -61,7 +62,7 @@ export class Placement {
     const hasLanding = this.state.buildings.some((b) => b.type === 'landing_module');
     if (def.unique && this.state.buildings.some((b) => b.type === type)) reasons.add(`${def.name} gibt es bereits`);
     if (!hasLanding && type !== 'landing_module') reasons.add('Zuerst das Landemodul setzen');
-    const missingUnlock = (def.unlock || []).filter((u) => !this.state.buildings.some((b) => b.type === u && !b.site));
+    const missingUnlock = cheat(this.state, 'unlock') ? [] : (def.unlock || []).filter((u) => !this.state.buildings.some((b) => b.type === u && !b.site));
     if (missingUnlock.length) reasons.add('Benötigt zuerst: ' + missingUnlock.map((u) => BUILDINGS[u].name).join(', '));
     let emin = Infinity, emax = -Infinity;
     for (let j = 0; j < h; j++) {
@@ -110,7 +111,7 @@ export class Placement {
       if (!inside) reasons.add('Muss auf dem Vorkommen stehen');
     }
     // Bezahlt wird beim Setzen nur das Geld; Material holt sich die Baustelle nach und nach.
-    res.missing = missingFor(this.state, def.buildCost);
+    res.missing = cheat(this.state, 'free') ? [] : missingFor(this.state, def.buildCost);
     for (const m of res.missing) if (m.good === 'money') reasons.add(`Geld fehlt (${fmt(m.have)} von ${fmt(m.need)} Cr)`);
     res.matShort = res.missing.filter((m) => m.good !== 'money');
     if (reasons.size) res.ok = false;
@@ -122,10 +123,13 @@ export class Placement {
     const v = this.validate(type, x, y);
     if (!v.ok) return null;
     const st = this.state, def = BUILDINGS[type];
-    const instant = type === 'landing_module';
-    pay(st, instant ? def.buildCost : { money: def.buildCost.money || 0 }, 1, `${def.name} ${instant ? 'gelandet' : 'in Auftrag gegeben'}`);
-    const b = { id: 'b' + st.nextId++, type, x, y, settlementId: st.settlements[0].id, builtAt: Date.now(), paid: { ...def.buildCost } };
+    const instant = type === 'landing_module' || cheat(st, 'instant');
+    const free = cheat(st, 'free');
+    if (!free) pay(st, type === 'landing_module' ? def.buildCost : { money: def.buildCost.money || 0 }, 1, `${def.name} ${type === 'landing_module' ? 'gelandet' : 'in Auftrag gegeben'}`);
+    const b = { id: 'b' + st.nextId++, type, x, y, settlementId: st.settlements[0].id, builtAt: Date.now(), paid: free ? {} : { ...def.buildCost } };
     if (!instant) startSite(b, def);
+    // sofort fertig, aber nicht kostenlos: Material wird gleich abgebucht (soweit vorhanden)
+    if (instant && !free && type !== 'landing_module') { const mats = { ...def.buildCost }; delete mats.money; pay(st, mats, 1); }
     st.buildings.push(b);
     if (!st.settlements[0].foundedAt) st.settlements[0].foundedAt = b.builtAt;
     for (const t of v.tiles) {

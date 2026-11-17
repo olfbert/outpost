@@ -466,30 +466,38 @@ export class Life {
   }
 
   // Steht ein anderer Lkw (oder ein Auto) kurz vor uns in derselben Spur?
+  _heading(v) {
+    const t = v.state === 'drive' && v.path ? v.path[v.pi] : null;
+    if (!t) return null;
+    const hx = t.x - v.x, hy = t.y - v.y, n = Math.hypot(hx, hy);
+    return n < 1e-4 ? null : { x: hx / n, y: hy / n };
+  }
+
+  // Steht o vor v (in der Spur oder im Nahbereich vor der Haube)?
+  _infront(v, h, o) {
+    const dx = o.x - v.x, dy = o.y - v.y, d = Math.hypot(dx, dy);
+    if (d > 0.7) return false;
+    const ahead = dx * h.x + dy * h.y, side = Math.abs(-dx * h.y + dy * h.x);
+    if (ahead > 0.05 && ahead < 0.62 && side < 0.2) return true;
+    return d < 0.4 && ahead > 0;
+  }
+
+  // Muss v warten? Gegenverkehr blockiert nie; sehen sich zwei gegenseitig vor sich,
+  // fährt der mit der kleineren Nummer, der andere wartet.
   _blocked(v) {
-    const t = v.path[v.pi];
-    if (!t) return false;
-    let hx = t.x - v.x, hy = t.y - v.y;
-    const n = Math.hypot(hx, hy);
-    if (n < 1e-4) return false;
-    hx /= n; hy /= n;
+    const h = this._heading(v);
+    if (!h) return false;
     for (const o of this.trucks) {
       if (o === v || o.state === 'garage') continue;
-      const dx = o.x - v.x, dy = o.y - v.y, d = Math.hypot(dx, dy);
-      if (d > 0.7) continue;
-      // genau übereinander (z. B. gemeinsam aus der Garage): der mit der höheren Nummer wartet
+      const d = Math.hypot(o.x - v.x, o.y - v.y);
       if (d < 0.12) { if (o.i < v.i) return true; continue; }
-      const ahead = dx * hx + dy * hy, side = Math.abs(-dx * hy + dy * hx);
-      if (ahead > 0.05 && ahead < 0.62 && side < 0.2) return true;     // Vordermann in der Spur
-      if (d < 0.4 && ahead > 0) {
-        // Nahbereich (Kurven, Einmündungen): sieht der andere uns auch vor sich, hat die kleinere Nummer Vorfahrt
-        const ot = o.state === 'drive' && o.path ? o.path[o.pi] : null;
-        if (ot) {
-          let ox = ot.x - o.x, oy = ot.y - o.y; const on = Math.hypot(ox, oy) || 1; ox /= on; oy /= on;
-          if (-(dx * ox + dy * oy) > 0 && o.i > v.i) continue;
-        }
-        return true;
+      if (!this._infront(v, h, o)) continue;
+      const oh = this._heading(o);
+      if (oh) {
+        if (oh.x * h.x + oh.y * h.y < -0.3) continue;              // Gegenverkehr: fährt in seiner Spur vorbei
+        if (this._infront(o, oh, v) && v.i < o.i) continue;       // gegenseitig: kleinere Nummer hat Vorfahrt
       }
+      return true;
     }
     return false;
   }
@@ -503,7 +511,7 @@ export class Life {
       v.state = 'wait'; v.wait = 0;
     }
     if (v.state === 'drive') {
-      if (this._blocked(v) && (v.stuck = (v.stuck || 0) + dt) < 12) return;
+      if (this._blocked(v) && (v.stuck = (v.stuck || 0) + dt) < 8) return;
       v.stuck = 0;
       let left = dt * this._truckSpeed(v);
       while (left > 0 && v.pi < v.path.length) {
@@ -527,7 +535,7 @@ export class Life {
       // beladen: zum Ziel
       const to = this._building(v.next.to);
       const r = to ? this.route(here, this.door(to)) : null;
-      if (r && r.length > 1) { v.path = this._roadPoints(r); v.pi = 1; v.state = 'drive'; v.leg = 'deliver'; return; }
+      if (r && r.length > 1) { v.path = this._roadPoints(r); v.pi = 0; v.state = 'drive'; v.leg = 'deliver'; return; }
       v.cargo = 0; v.next = null;
     }
     // neue Fuhre aus den Strecken der Disposition
@@ -538,7 +546,7 @@ export class Life {
       const r = this.route(here, df);
       if (r) {
         v.next = rt;
-        if (r.length > 1) { v.path = this._roadPoints(r); v.pi = 1; v.state = 'drive'; v.leg = 'pickup'; }
+        if (r.length > 1) { v.path = this._roadPoints(r); v.pi = 0; v.state = 'drive'; v.leg = 'pickup'; }
         else { v.leg = 'pickup'; v.state = 'wait'; v.wait = 1.2; v.cargo = cargoIndex(rt.good); }
         return;
       }
@@ -547,7 +555,7 @@ export class Life {
     const home = this._truckHome(), hd = home && this.door(home);
     if (hd && (here.x !== hd.x || here.y !== hd.y)) {
       const r = this.route(here, hd);
-      if (r && r.length > 1) { v.path = this._roadPoints(r); v.pi = 1; v.state = 'drive'; v.leg = 'home'; v.next = null; v.cargo = 0; return; }
+      if (r && r.length > 1) { v.path = this._roadPoints(r); v.pi = 0; v.state = 'drive'; v.leg = 'home'; v.next = null; v.cargo = 0; return; }
     }
     v.state = 'garage'; v.wait = 4 + rand2(v.i, Math.floor(this.time), 93) * 6;
   }

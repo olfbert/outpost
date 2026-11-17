@@ -6,6 +6,7 @@ import { ROADS } from '../config/roads.js';
 import { T, isWater, isDeposit, isTree } from '../config/terrain.js';
 import { GOODS, REFUND_RATE, fmt } from '../config/economy.js';
 import { missingFor, pay } from '../state/gameState.js';
+import { cheat } from '../ui/cheats.js';
 
 export class Roads {
   constructor(world, store, state, placement) {
@@ -65,7 +66,7 @@ export class Roads {
     }
     const cost = {};
     for (const [k, v] of Object.entries(def.cost)) cost[k] = v * newTiles;
-    const missing = missingFor(this.state, cost);
+    const missing = cheat(this.state, 'free') ? [] : missingFor(this.state, cost);
     for (const m of missing) reasons.add(`${GOODS[m.good].name} fehlt (${fmt(m.have)} von ${fmt(m.need)})`);
     if (!newTiles && !bad) reasons.add('Weg besteht schon');
     return { kind: 'road', type, tiles, newTiles, trees, bad, cost, missing, reasons: [...reasons], ok: bad === 0 && newTiles > 0 && !missing.length };
@@ -74,7 +75,7 @@ export class Roads {
   build(plan) {
     if (!plan.ok) return null;
     const st = this.state;
-    pay(st, plan.cost, 1, `${plan.newTiles} Felder ${ROADS[plan.type].name}`);
+    if (!cheat(st, 'free')) pay(st, plan.cost, 1, `${plan.newTiles} Felder ${ROADS[plan.type].name}`);
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
     for (const t of plan.tiles) {
       if (t.same) continue;

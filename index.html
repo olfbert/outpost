@@ -42,6 +42,7 @@
 <canvas id="minimap" width="300" height="150" aria-label="Weltübersicht"></canvas>
 
 <div id="side-buttons">
+  <button class="icon-btn cheat-btn" id="btn-cheats" aria-label="Cheats" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg></button>
   <button class="icon-btn" id="btn-zoom-in" aria-label="Hineinzoomen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
   <button class="icon-btn" id="btn-zoom-out" aria-label="Herauszoomen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg></button>
   <button class="icon-btn" id="btn-home" aria-label="Zur Siedlung"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11l8-7 8 7M6 10v9h12v-9"/></svg></button>
@@ -108,7 +109,41 @@
     <label class="check"><input type="checkbox" id="opt-clouds"> Wolken</label>
     <label class="check"><input type="checkbox" id="opt-debug"> Leistungsanzeige</label>
 
+    <h3>Cheat-Modus</h3>
+    <label class="check"><input type="checkbox" id="opt-cheats"> Cheat-Modus einschalten</label>
+    <p class="muted">Zeigt am rechten Rand einen Blitz-Knopf: Geld, Waren, Zeitraffer, sofort fertig bauen. Der Spielstand wird als „mit Cheats“ markiert.</p>
+
     <p class="muted" id="menu-version"></p>
+  </div>
+</dialog>
+
+<dialog id="cheats">
+  <div class="dialog-head">
+    <h2>Cheats</h2>
+    <button class="icon-btn" id="cheat-close" aria-label="Schließen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  </div>
+  <div class="dialog-body">
+    <h3>Bauen</h3>
+    <label class="check"><input type="checkbox" data-cheat="instant"> Sofort fertig bauen (keine Baustellen)</label>
+    <label class="check"><input type="checkbox" data-cheat="free"> Kostenlos bauen (kein Geld, kein Material)</label>
+    <label class="check"><input type="checkbox" data-cheat="unlock"> Alle Gebäude freigeschaltet</label>
+    <div class="row wrap"><button class="btn" data-act="finish">Alle Baustellen jetzt fertigstellen</button></div>
+    <h3>Geld</h3>
+    <label class="check"><input type="checkbox" data-cheat="money"> Geld unbegrenzt</label>
+    <div class="row wrap"><button class="btn" data-act="money" data-n="100000">+100.000 Cr</button><button class="btn" data-act="money" data-n="1000000">+1 Mio. Cr</button></div>
+    <h3>Waren</h3>
+    <div class="row wrap"><button class="btn" data-act="goods" data-n="500">+500 von jeder Ware</button><button class="btn" data-act="fill">Alle Lager auffüllen</button><button class="btn" data-act="food">+1.000 Nahrung</button></div>
+    <h3>Zeit</h3>
+    <div class="row wrap" id="cheat-speed">
+      <button class="btn small" data-speed="1">Normal</button>
+      <button class="btn small" data-speed="24">1 Std = 1 Monat</button>
+      <button class="btn small" data-speed="1440">1 Min = 1 Monat</button>
+      <button class="btn small" data-speed="43200">2 s = 1 Monat</button>
+    </div>
+    <div class="row wrap"><button class="btn" data-act="skip" data-n="1">+1 Monat</button><button class="btn" data-act="harvest">Bis zur Ernte</button><button class="btn" data-act="skip" data-n="12">+1 Jahr</button></div>
+    <h3>Siedlung</h3>
+    <div class="row wrap"><button class="btn" data-act="trucks">+5 Lkw</button><button class="btn" data-act="houses">Alle Häuser voll belegen</button></div>
+    <p class="muted" id="cheat-msg"></p>
   </div>
 </dialog>
 

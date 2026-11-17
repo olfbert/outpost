@@ -30,7 +30,9 @@ import { SaveUi } from './ui/saveUi.js';
 import { fieldBox } from './simulation/farming.js';
 import { updatePopulation } from './simulation/population.js';
 import { TRUCK, truckCount } from './simulation/logistics.js';
-import { addGoods } from './simulation/inventory.js';
+import { addGoods, stores, storeCap } from './simulation/inventory.js';
+import { CheatPanel, cheat } from './ui/cheats.js';
+import { GOOD_IDS, FOOD_VARIETY } from './config/economy.js';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('game');
@@ -113,6 +115,11 @@ function startWorld(st) {
 // Nach einem Simulationsschritt: Welt und Anzeigen auffrischen
 function infoCtx() { return { gameMonths: state.gameMonths, variety: state.pop?.variety || 0 }; }
 
+function cheatTick() {
+  if (cheat(state, 'money') && state.money < 9_999_999) state.money = 9_999_999;
+  if (cheat(state, 'instant') && state.buildings.some((b) => b.site)) finishAllSites();
+}
+
 function afterSim(res, quiet = false) {
   for (const b of res.completed || []) {
     const def = BUILDINGS[b.type];
@@ -177,6 +184,7 @@ function lockReason(key) {
   if (kind === 'r') return hasLanding ? '' : 'Zuerst das Landemodul setzen';
   const def = BUILDINGS[type];
   if (def.unique && state.buildings.some((b) => b.type === type)) return `${def.name} gibt es bereits`;
+  if (cheat(state, 'unlock') && (type === 'landing_module' || hasLanding)) return '';
   if (type !== 'landing_module' && !hasLanding) return 'Zuerst das Landemodul setzen';
   const miss = (def.unlock || []).filter((u) => !state.buildings.some((b) => b.type === u && !b.site));
   if (miss.length) return 'Benötigt zuerst (fertig gebaut): ' + miss.map((u) => BUILDINGS[u].name).join(', ');
@@ -441,6 +449,7 @@ const menu = new MenuDialog({
     const st = newState(seed || randomSeed(), CONFIG);
     st.settings = { ...state.settings };
     startWorld(st);
+    cheats.sync();
     saveNow();
     hud.toast(`Neue Welt · Seed ${st.seed}`);
   },
@@ -448,6 +457,60 @@ const menu = new MenuDialog({
     state.settings[key] = value;
     refreshState();
     scheduleSave();
+  },
+  setCheats(on) { cheats.setOn(on); },
+});
+
+// --- Cheat-Modus ---------------------------------------------------------------------
+function finishAllSites() {
+  const res = { completed: [], felled: [], months: [], popChanged: true };
+  for (const b of state.buildings) {
+    if (!b.site) continue;
+    delete b.site;
+    b.completedAt = state.gameMonths;
+    res.completed.push(b);
+  }
+  if (res.completed.length) { afterSim(res, true); updatePopulation(state, 0, {}); }
+  return res.completed.length;
+}
+function simulateMonths(m) {
+  const r = production.advance(m);
+  afterSim(r, true);
+  return r;
+}
+const cheats = new CheatPanel({
+  state: () => state,
+  save: () => scheduleSave(2000),
+  refresh: () => { refreshState(); buildMenu.refresh(); dirty = true; },
+  setSpeed: (v) => { speed = v; },
+  getSpeed: () => speed,
+  money(n) { state.money += n; return `+${n.toLocaleString('de-DE')} Cr`; },
+  goods(n) { const g = {}; for (const k of GOOD_IDS) g[k] = n; addGoods(state, g); return `+${n} von jeder Ware im Lager`; },
+  fill() {
+    for (const s of stores(state)) { s.inv = s.inv || {}; for (const k of GOOD_IDS) { const c = storeCap(s, k); if (c > (s.inv[k] || 0)) s.inv[k] = c; } }
+    addGoods(state, {});
+    return 'Alle Lager sind voll';
+  },
+  food(n) { const g = {}; for (const k of FOOD_VARIETY) g[k] = n / FOOD_VARIETY.length; addGoods(state, g); return `+${n} Nahrung (alle Sorten)`; },
+  finish() { const n = finishAllSites(); return n ? `${n} Baustellen fertiggestellt` : 'Keine Baustellen'; },
+  skip(m) { simulateMonths(m); return `${m === 12 ? 'Ein Jahr' : m + ' Monat'} vorgespult`; },
+  harvest() {
+    const mi = Math.floor(state.gameMonths) % 12;
+    const m = ((7 - mi + 12) % 12 || 12) - (state.gameMonths % 1) + 0.6;
+    simulateMonths(m);
+    return 'Vorgespult bis in die Erntezeit';
+  },
+  trucks() {
+    const b = state.buildings.find((q) => !q.site && q.type === 'haulage') || state.buildings.find((q) => q.type === 'landing_module');
+    if (!b) return 'Zuerst das Landemodul setzen';
+    b.trucks = (b.trucks || 0) + 5;
+    return `Jetzt ${truckCount(state)} Lkw`;
+  },
+  houses() {
+    let n = 0;
+    for (const b of state.buildings) { const r = BUILDINGS[b.type].residents; if (r && !b.site) { b.pop = r; n++; } }
+    updatePopulation(state, 0, {}); state.rev++;
+    return `${n} Häuser voll belegt`;
   },
 });
 
@@ -463,6 +526,7 @@ const saveUi = new SaveUi({
     st.lastSimAt = Date.now();          // keine Nachrechnung der Zeit zwischen Export und Import
     st.settings = { ...st.settings, debug: state.settings.debug };
     startWorld(st);
+    cheats.sync();
     saveNow();
     hud.toast(`Spielstand „${st.settlements[0].name}“ geladen · alter Stand gesichert`, 4000);
   },
@@ -550,6 +614,7 @@ function frame(now) {
     const months = (gap > 5000 ? gap : gap * speed) / CONFIG.realMsPerGameMonth;
     lastTick = wall;
     afterSim(production.advance(months));
+    cheatTick();
     if (wall - lastHud > (speed > 1 ? 250 : 1000)) {
       lastHud = wall;
       hud.setStock(state, life.stats);
@@ -613,6 +678,7 @@ async function boot() {
     mark();
   }
   startWorld(st);
+  cheats.sync();
   $('loading').classList.add('done');
   setTimeout(() => $('loading').remove(), 500);
   requestAnimationFrame(frame);

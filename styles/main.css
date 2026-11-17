@@ -313,3 +313,20 @@ dialog#importdlg .row .btn { flex: 1; }
 .eco-food .neg { color: var(--bad); }
 #eco-body .bar { height: 6px; border-radius: 3px; background: rgba(255, 255, 255, 0.12); overflow: hidden; margin: 4px 0 8px; }
 #eco-body .bar span { display: block; height: 100%; }
+
+/* Cheat-Modus */
+.cheat-btn svg path { fill: #f0c27a; stroke: none; }
+.cheat-btn.fast { box-shadow: 0 0 0 2px #f0c27a inset; }
+#cheats .row { margin: 6px 0 10px; }
+#cheats .btn.active { background: #f0c27a; color: #2a1a10; }
+dialog#cheats {
+  width: min(460px, calc(100vw - 16px)); max-height: calc(100dvh - 32px); padding: 0; color: var(--text);
+  background: var(--panel-solid); border: 1px solid var(--line); border-radius: 14px; overflow: hidden;
+  flex-direction: column;
+}
+dialog#cheats[open] { display: flex; }
+dialog#cheats::backdrop { background: rgba(8, 12, 14, 0.55); }
+dialog#cheats .dialog-body { overflow: auto; flex: 1; padding: 4px 16px 16px; }
+dialog#cheats h3 { margin: 14px 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+dialog#cheats .row { display: flex; gap: 6px; }
+dialog#cheats .row.wrap { flex-wrap: wrap; }
