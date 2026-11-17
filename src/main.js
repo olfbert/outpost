@@ -33,7 +33,7 @@ import { TRUCK, truckCount } from './simulation/logistics.js';
 import { addGoods, takeGoods, stores, storeCap } from './simulation/inventory.js';
 import { CheatPanel, cheat } from './ui/cheats.js';
 import { TradePanel } from './ui/tradePanel.js';
-import { siteNeighbors, freshNeighbor, advanceNeighbor, offers, layoutNeighbor, TRADE } from './simulation/neighbors.js';
+import { candidateSites, freshNeighbor, advanceNeighbor, offers, layoutNeighbor, cityClass, CITY, PROFILES, TRADE } from './simulation/neighbors.js';
 import { GOOD_IDS, FOOD_VARIETY } from './config/economy.js';
 
 const $ = (id) => document.getElementById(id);
@@ -75,23 +75,48 @@ function scheduleSave(ms = 1200) {
 
 // --- Welt starten ---------------------------------------------------------------
 // --- Computer-Nachbarn -----------------------------------------------------------------
-let neighborSites = [];
+let neighborSites = [];       // bestehende Siedlungen
+let candidateList = [];       // alle möglichen Plätze (aus dem Seed)
 const nbBucket = (n) => Math.floor(n.size / 30) * 30;
+let adoptOldRoads = false;    // erster Aufbau nach dem Laden: ältere Spielstände enthalten Nachbarwege (Schotter)
+
+// Darf an diesem Platz jetzt gegründet werden? Nicht zu nah an eigenen Gebäuden.
+function canFound(c) {
+  return !state.buildings.some((b) => Math.abs(b.x - c.x) < CITY.keepAway && Math.abs(b.y - c.y) < CITY.keepAway);
+}
 function setupNeighbors() {
-  neighborSites = siteNeighbors(world, store);
+  candidateList = candidateSites(world, store);
   state.neighbors = state.neighbors || [];
-  for (const site of neighborSites) if (!state.neighbors.find((n) => n.id === site.id)) state.neighbors.push(freshNeighbor(site));
+  neighborSites = [];
+  adoptOldRoads = true;
+  for (const c of candidateList) {
+    let n = state.neighbors.find((q) => q.id === c.id);
+    if (!n && c.foundAt <= (state.gameMonths || 0) && (c.foundAt === 0 || canFound(c))) {
+      n = freshNeighbor(c, (state.gameMonths || 0) - c.foundAt);
+      state.neighbors.push(n);
+    }
+    if (n) neighborSites.push(c);
+  }
   applyNeighborLayouts();
 }
 function applyNeighborLayouts() {
+  const W = world.size;
+  // alte Wege der Nachbarn entfernen (sie werden neu angelegt, ggf. ausgebaut)
+  for (const k of state.npcRoads || []) state.roads.delete(k);
   state.npcBuildings = [];
   state.npcRoads = new Set();
-  const W = world.size;
+  const own = new Set();
+  for (const b of state.buildings) {
+    const d = BUILDINGS[b.type].footprint;
+    for (let j = 0; j < d.height; j++) for (let i = 0; i < d.width; i++) own.add((b.y + j) * W + b.x + i);
+  }
+  const blocked = (x, y) => own.has(y * W + x);
   for (const site of neighborSites) {
     const n = state.neighbors.find((q) => q.id === site.id);
     if (!n) continue;
     site.bucket = nbBucket(n);
-    const lay = layoutNeighbor(world, store, site, site.bucket);
+    site.size = n.size;
+    const lay = layoutNeighbor(world, store, site, site.bucket, blocked);
     site.station = lay.station;
     site.stationB = lay.buildings.find((b) => b.station) || null;
     for (const b of lay.buildings) {
@@ -100,13 +125,19 @@ function applyNeighborLayouts() {
       const d = BUILDINGS[b.type].footprint;
       for (let j = -1; j <= d.height; j++) for (let i = -1; i <= d.width; i++) state.cleared.add((b.y + j) * W + b.x + i);
     }
-    for (const k of lay.roads) { if (!state.roads.has(k)) state.roads.set(k, 2); state.npcRoads.add(k); state.cleared.add(k); }
-    store.invalidateArea(site.x - 24, site.y - 24, site.x + 24, site.y + 24);
-    if (renderer.world === world) renderer.invalidateTiles(site.x - 24, site.y - 24, 49, 49, true);
+    for (const [k, t] of lay.roads) {
+      const had = state.roads.get(k);
+      if (!had || (adoptOldRoads && had === 2)) { state.roads.set(k, t); state.npcRoads.add(k); }
+      state.cleared.add(k);
+    }
+    const R = 40;
+    store.invalidateArea(site.x - R, site.y - R, site.x + R, site.y + R);
+    if (renderer.world === world) renderer.invalidateTiles(site.x - R, site.y - R, 2 * R + 1, 2 * R + 1, true);
   }
+  adoptOldRoads = false;
   state.roadRev = (state.roadRev || 0) + 1;
   placement.rebuild();
-  overlay.neighbors = neighborSites.map((q) => ({ name: q.name, x: q.x, y: q.y - 2 }));
+  overlay.neighbors = neighborSites.map((q) => ({ name: `${q.name} · ${cityClass(q.size || 60)}`, x: q.x, y: q.y - 2 }));
   state.rev++;
 }
 function neighborMonth(m) {
@@ -116,6 +147,15 @@ function neighborMonth(m) {
     if (!n) continue;
     advanceNeighbor(n, site, m);
     if (nbBucket(n) !== site.bucket) grew = true;
+  }
+  // neue Siedlungen gründen
+  for (const c of candidateList) {
+    if (neighborSites.includes(c) || c.foundAt > (state.gameMonths || 0) || !canFound(c)) continue;
+    state.neighbors.push(freshNeighbor(c, Math.max(0, (state.gameMonths || 0) - c.foundAt - 1)));
+    neighborSites.push(c);
+    grew = true;
+    state.history.push({ t: Date.now(), gm: state.gameMonths, text: `Neue Siedlung gegründet: ${c.name} (${PROFILES[c.profile].name})`, money: 0 });
+    if (hud) hud.toast(`Neue Siedlung gegründet: ${c.name} (${PROFILES[c.profile].name})`, 5000);
   }
   if (grew) applyNeighborLayouts();
 }

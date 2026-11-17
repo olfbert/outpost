@@ -1,6 +1,6 @@
 // Handelsfenster: Nachbarsiedlungen (Kaufen/Verkaufen) – braucht ein Handelskontor.
 import { GOODS, fmt } from '../config/economy.js';
-import { PROFILES } from '../simulation/neighbors.js';
+import { PROFILES, cityClass } from '../simulation/neighbors.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -47,7 +47,7 @@ export class TradePanel {
     const conn = this.api.conn(s.id);
     const office = this.api.hasOffice();
     const off = this.api.offersFor(s.id);
-    const head = `<div class="eco-food"><b>${esc(s.name)}</b> · ${esc(PROFILES[s.profile].name)} · etwa ${fmt(Math.round(n.size * 3))} Einwohner<br>
+    const head = `<div class="eco-food"><b>${esc(s.name)}</b> · ${esc(cityClass(n.size))} · ${esc(PROFILES[s.profile].name)} · etwa ${fmt(Math.round(n.size * 3))} Einwohner<br>
       ${conn.road ? `<span class="pos">Straße zur Handelsstation verbunden</span> (${fmt(conn.dist)} Felder) – Lkw liefern, kaum Aufschlag` : 'Keine Straßenverbindung – nur Luftfracht (Einkauf +35 %, Verkauf −35 %). Baue eine Straße bis zu ihrer Handelsstation.'}<br>
       Beziehung: ${Math.round(n.relation)} / 100${n.relation >= 30 ? ' – bessere Preise' : ''} · Entfernung ca. ${fmt(conn.air)} Felder</div>
       <div class="row wrap"><button class="btn small" data-act="focus">Auf der Karte zeigen</button></div>`;

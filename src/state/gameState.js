@@ -49,7 +49,7 @@ export function serialize(state) {
     money: state.money,
     stock: state.stock,
     unstored: state.unstored || {},
-    roads: [...state.roads],
+    roads: [...state.roads].filter(([k]) => !(state.npcRoads && state.npcRoads.has(k))),   // Nachbarwege folgen aus dem Seed
     history: state.history.slice(-50),
     gameMonths: state.gameMonths,
     taxAcc: state.taxAcc || 0,

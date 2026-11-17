@@ -1,7 +1,7 @@
 # OUTPOST
 
 Isometrisches Endlos-Aufbauspiel auf einem neu besiedelten Planeten.
-Stand: **Version 0.11.0** – Phase 1–4, Stufe A (Versorgung), Stufe B (Logistik), Brücken, Computer-Nachbarn, Handel, Cheat-Modus, dazu Drohnenflugplatz, neue Wohnhäuser, Deko und Tag/Nacht (siehe docs/ENTSCHEIDUNGEN_LEBEN_2.md).
+Stand: **Version 0.12.0** – Phase 1–4, Stufe A (Versorgung), Stufe B (Logistik), Brücken, Computer-Nachbarn, Handel, Cheat-Modus, dazu Drohnenflugplatz, neue Wohnhäuser, Deko und Tag/Nacht (siehe docs/ENTSCHEIDUNGEN_LEBEN_2.md).
 
 Der vollständige Arbeitsauftrag steht unverändert in `CLAUDE.md`.
 Entscheidungen, die davon abweichen oder ihn konkretisieren, stehen in `docs/ENTSCHEIDUNGEN.md` (Phase 1)

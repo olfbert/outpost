@@ -1,6 +1,6 @@
 // Zentrale Spielkonfiguration. Alle Werte hier sind bewusst leicht anpassbar.
 
-export const GAME_VERSION = '0.11.0';
+export const GAME_VERSION = '0.12.0';
 export const SAVE_SCHEMA_VERSION = 7;
 
 export const CONFIG = {
