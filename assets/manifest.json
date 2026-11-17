@@ -213,6 +213,36 @@
       "ax": 65,
       "ay": 13,
       "plinthCut": 8
+    },
+    "container_home": {
+      "file": "buildings/residential/container_home_01.png",
+      "ax": 35,
+      "ay": 9,
+      "plinthCut": 3
+    },
+    "duplex": {
+      "file": "buildings/residential/duplex_01.png",
+      "ax": 31,
+      "ay": 24,
+      "plinthCut": 2
+    },
+    "dormitory": {
+      "file": "buildings/residential/dormitory_01.png",
+      "ax": 54,
+      "ay": 21,
+      "plinthCut": 2
+    },
+    "villa": {
+      "file": "buildings/residential/villa_01.png",
+      "ax": 114,
+      "ay": 19,
+      "plinthCut": 3
+    },
+    "highrise": {
+      "file": "buildings/residential/highrise_01.png",
+      "ax": 58,
+      "ay": 76,
+      "plinthCut": 3
     }
   }
 }

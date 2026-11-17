@@ -10,7 +10,9 @@ der Grundfläche. Jeder Bodenpunkt der Grundfläche wirft Schatten entlang der L
 (Licht von links oben, Schatten nach rechts unten entlang der Welt-x-Achse), so weit wie die
 Höhe in seiner Spalte reicht. Sichtbar ist nur der Teil, der nicht vom Gebäude verdeckt wird.
 
-Aufruf: python3 -I tools/reshadow.py   (nach flatten_plinth.py ausführen; wiederholbar)
+Aufruf: python3 -I tools/reshadow.py [sprite ...]   (nach flatten_plinth.py ausführen)
+Ohne Angabe werden alle Gebäudebilder bearbeitet. Achtung: Die Abdunklung am Fuß hoher Objekte
+wird bei jedem Lauf erneut angewendet – nur neu verarbeitete Bilder angeben.
 """
 import json
 import numpy as np
@@ -48,7 +50,11 @@ def foot_y(a, op, x, y_back, y_front):
             ref = (ref * 3 + a[y, x, :3]) // 4
     return int(y_back)
 
+import sys
+only = set(sys.argv[1:])
 for name, (fw, fh) in fps.items():
+    if only and name not in only:
+        continue
     sp = man['sprites'].get(name)
     if not sp:
         continue
