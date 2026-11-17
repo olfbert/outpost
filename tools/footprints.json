@@ -1,0 +1,135 @@
+{
+ "_hinweis": "Grundflächen der Gebäude-Sprites (aus src/config/buildings.js erzeugt).",
+ "landing_module": [
+  2,
+  2
+ ],
+ "shelter": [
+  1,
+  1
+ ],
+ "house_small": [
+  1,
+  1
+ ],
+ "warehouse": [
+  2,
+  2
+ ],
+ "lumber_camp": [
+  1,
+  1
+ ],
+ "sawmill": [
+  2,
+  2
+ ],
+ "quarry": [
+  2,
+  2
+ ],
+ "iron_mine": [
+  2,
+  2
+ ],
+ "coal_mine": [
+  2,
+  2
+ ],
+ "lime_quarry": [
+  2,
+  2
+ ],
+ "clay_pit": [
+  2,
+  2
+ ],
+ "sand_pit": [
+  2,
+  2
+ ],
+ "smelter": [
+  2,
+  2
+ ],
+ "cement_works": [
+  2,
+  2
+ ],
+ "concrete_plant": [
+  2,
+  2
+ ],
+ "fisher_hut": [
+  1,
+  1
+ ],
+ "farm": [
+  2,
+  2
+ ],
+ "ranch": [
+  2,
+  2
+ ],
+ "mill": [
+  2,
+  2
+ ],
+ "bakery": [
+  1,
+  1
+ ],
+ "butcher": [
+  1,
+  1
+ ],
+ "glassworks": [
+  2,
+  2
+ ],
+ "greenhouse": [
+  2,
+  2
+ ],
+ "food_store": [
+  1,
+  1
+ ],
+ "wood_house": [
+  1,
+  1
+ ],
+ "brick_house": [
+  1,
+  1
+ ],
+ "row_house": [
+  2,
+  2
+ ],
+ "apartment": [
+  2,
+  2
+ ],
+ "haulage": [
+  2,
+  2
+ ],
+ "silo": [
+  2,
+  2
+ ],
+ "drone_port": [
+  2,
+  2
+ ],
+ "trade_office": [
+  1,
+  1
+ ],
+ "depot": [
+  2,
+  2
+ ]
+}
